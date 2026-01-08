@@ -1,7 +1,8 @@
 services:
   - type: web
-    name: RECRUITMENT_SYSTEM
+    name: recruitment-system
     env: python
+    plan: free
     pythonVersion: 3.10.13
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
