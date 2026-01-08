@@ -3,96 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Seeker Dashboard</title>
+    <title>Job Seeker Dashboard - TalentMatch AI</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-brand">🎯 RecruitAI - Job Seeker</div>
+        <div class="nav-brand">🎯 TalentMatch AI</div>
         <div class="nav-menu">
-            <a href="{{ url_for('jobseeker_dashboard') }}" class="active">Dashboard</a>
-            <a href="{{ url_for('browse_jobs') }}">Browse Jobs</a>
-            <a href="{{ url_for('resume_scorer') }}">Resume Scorer</a>
-            <a href="{{ url_for('job_matcher') }}">Job Matcher</a>
-            <a href="{{ url_for('my_applications') }}">My Applications</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('jobseeker_dashboard') }}" class="nav-link active">Dashboard</a>
+            <a href="{{ url_for('resume_scorer') }}" class="nav-link">Resume Scorer</a>
+            <a href="{{ url_for('job_matcher') }}" class="nav-link">Job Matcher</a>
+            <div class="nav-user">
+                <span>👤 {{ session.full_name or session.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm">Logout</a>
+            </div>
         </div>
     </nav>
 
     <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <div class="page-header">
-            <h1>Welcome, {{ session.name }}!</h1>
-            <p>Manage your job search and applications</p>
+            <div>
+                <h1>Welcome, {{ session.full_name or session.username }}! 👋</h1>
+                <p style="color: var(--gray-600); margin-top: 0.5rem;">Find your dream job today</p>
+            </div>
         </div>
 
         <div class="stats-grid">
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <div class="stat-number">{{ stats.total_applications }}</div>
-                <div class="stat-label">Total Applications</div>
-            </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <div class="stat-number">{{ stats.pending }}</div>
-                <div class="stat-label">Pending</div>
-            </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <div class="stat-number">{{ stats.shortlisted }}</div>
-                <div class="stat-label">Shortlisted</div>
-            </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                <div class="stat-number">{{ stats.available_jobs }}</div>
-                <div class="stat-label">Available Jobs</div>
-            </div>
-        </div>
-
-        <div class="tools-grid">
-            <div class="tool-card">
-                <div class="tool-icon">📊</div>
-                <h3>Resume Quality Scorer</h3>
-                <p>Get AI-powered analysis of your resume quality with actionable improvement tips</p>
-                <a href="{{ url_for('resume_scorer') }}" class="btn btn-primary">Try Now</a>
-            </div>
-
-            <div class="tool-card">
-                <div class="tool-icon">🎯</div>
-                <h3>Job-Resume Matcher</h3>
-                <p>Compare your resume against any job description to see how well you match</p>
-                <a href="{{ url_for('job_matcher') }}" class="btn btn-primary">Match Now</a>
-            </div>
-
-            <div class="tool-card">
-                <div class="tool-icon">💼</div>
-                <h3>Browse Jobs</h3>
-                <p>Explore available job openings and apply with one click</p>
-                <a href="{{ url_for('browse_jobs') }}" class="btn btn-primary">View Jobs</a>
-            </div>
-
-            <div class="tool-card">
-                <div class="tool-icon">📋</div>
-                <h3>My Applications</h3>
-                <p>Track all your job applications and their current status</p>
-                <a href="{{ url_for('my_applications') }}" class="btn btn-primary">View Applications</a>
-            </div>
-        </div>
-
-        <div class="recent-jobs">
-            <h2>🔥 Recently Posted Jobs</h2>
-            <div class="jobs-list">
-                {% for job in recent_jobs %}
-                <div class="job-item">
-                    <div class="job-header">
-                        <h3>{{ job.title }}</h3>
-                        <span class="job-date">{{ job.created_at }}</span>
-                    </div>
-                    <p class="job-company">{{ job.company }}</p>
-                    <p class="job-description">{{ job.description[:150] }}...</p>
-                    <div class="job-footer">
-                        <span class="job-location">📍 {{ job.location }}</span>
-                        <a href="{{ url_for('apply_job', job_id=job.id) }}" class="btn btn-small">Apply Now</a>
-                    </div>
+            <div class="stat-card">
+                <div class="stat-icon blue">📄</div>
+                <div class="stat-info">
+                    <h3>{{ stats.total_applications }}</h3>
+                    <p>Total Applications</p>
                 </div>
-                {% endfor %}
             </div>
+            <div class="stat-card">
+                <div class="stat-icon orange">⏳</div>
+                <div class="stat-info">
+                    <h3>{{ stats.pending }}</h3>
+                    <p>Pending Review</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">⭐</div>
+                <div class="stat-info">
+                    <h3>{{ stats.shortlisted }}</h3>
+                    <p>Shortlisted</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔥 Available Jobs</h2>
+            {% if jobs|length > 0 %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                    {% for job in jobs %}
+                    <div style="border: 2px solid var(--gray-200); border-radius: 1rem; padding: 1.5rem; transition: all 0.3s; cursor: pointer;" 
+                         onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+                         onmouseout="this.style.borderColor='var(--gray-200)'; this.style.boxShadow='none'">
+                        <h3 style="color: var(--primary); margin-bottom: 0.5rem;">{{ job.title }}</h3>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                            <span class="badge badge-primary">{{ job.location or 'Remote' }}</span>
+                            <span class="badge badge-success">{{ job.job_type or 'Full-time' }}</span>
+                        </div>
+                        <p style="color: var(--gray-600); margin-bottom: 1rem;">
+                            {{ job.description[:120] }}{% if job.description|length > 120 %}...{% endif %}
+                        </p>
+                        <a href="{{ url_for('apply_job', job_id=job.id) }}" class="btn btn-primary" style="width: 100%;">
+                            Apply Now →
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="text-align: center; padding: 2rem; color: var(--gray-500);">No jobs available at the moment. Check back soon!</p>
+            {% endif %}
+        </div>
+
+        <div class="section">
+            <h2>📋 My Applications</h2>
+            {% if applications|length > 0 %}
+                <div class="data-table" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--gray-100);">
+                                <th style="padding: 1rem; text-align: left;">Job Title</th>
+                                <th style="padding: 1rem; text-align: left;">Location</th>
+                                <th style="padding: 1rem; text-align: center;">Match Score</th>
+                                <th style="padding: 1rem; text-align: center;">Status</th>
+                                <th style="padding: 1rem; text-align: left;">Applied On</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for app in applications %}
+                            <tr style="border-bottom: 1px solid var(--gray-200);">
+                                <td style="padding: 1rem;"><strong>{{ app.job_title }}</strong></td>
+                                <td style="padding: 1rem;">{{ app.location or 'Remote' }}</td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    <span class="score-badge" style="background: linear-gradient(135deg, 
+                                        {% if app.match_score >= 75 %}#10B981 0%, #059669 100%{% elif app.match_score >= 60 %}#3B82F6 0%, #2563EB 100%{% elif app.match_score >= 45 %}#F59E0B 0%, #D97706 100%{% else %}#EF4444 0%, #DC2626 100%{% endif %}); padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; font-size: 1rem;">
+                                        {{ app.match_score }}%
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    <span class="badge badge-{{ 'success' if app.status == 'shortlisted' else 'warning' if app.status == 'pending' else 'primary' if app.status == 'interview' else 'danger' }}">
+                                        {{ app.status.title() }}
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem;">{{ app.applied_at[:10] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p style="text-align: center; padding: 2rem; color: var(--gray-500);">You haven't applied to any jobs yet. Start applying!</p>
+            {% endif %}
         </div>
     </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 TalentMatch AI. All rights reserved.</p>
+    </footer>
 </body>
 </html>

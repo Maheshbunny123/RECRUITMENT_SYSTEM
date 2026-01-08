@@ -3,130 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job-Resume Matcher</title>
+    <title>Job Matcher - TalentMatch AI</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-brand">🎯 RecruitAI - Job Matcher</div>
+        <div class="nav-brand">🎯 TalentMatch AI</div>
         <div class="nav-menu">
-            <a href="{{ url_for('jobseeker_dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('browse_jobs') }}">Browse Jobs</a>
-            <a href="{{ url_for('resume_scorer') }}">Resume Scorer</a>
-            <a href="{{ url_for('job_matcher') }}" class="active">Job Matcher</a>
-            <a href="{{ url_for('my_applications') }}">My Applications</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('jobseeker_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('resume_scorer') }}" class="nav-link">Resume Scorer</a>
+            <a href="{{ url_for('job_matcher') }}" class="nav-link active">Job Matcher</a>
+            <div class="nav-user">
+                <span>👤 {{ session.full_name or session.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm">Logout</a>
+            </div>
         </div>
     </nav>
 
     <div class="container">
         <div class="page-header">
-            <h1>🎯 Job-Resume Matcher</h1>
-            <p>Compare your resume against any job description to see how well you match</p>
+            <div>
+                <h1>🎯 Job-Resume Matcher</h1>
+                <p style="color: var(--gray-600); margin-top: 0.5rem;">See how well your resume matches any job description</p>
+            </div>
         </div>
 
-        <div class="matcher-form">
-            <form method="POST" enctype="multipart/form-data">
-                <div class="form-row">
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label>Upload Your Resume</label>
-                            <input type="file" name="resume" accept=".pdf,.docx,.txt" required>
-                            <small>PDF, DOCX, or TXT format</small>
-                        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div class="section">
+                <h2>Compare Resume with Job</h2>
+                <p style="color: var(--gray-600); margin-bottom: 2rem;">
+                    Upload your resume and paste a job description to see your match score before applying.
+                </p>
+
+                <form method="POST" enctype="multipart/form-data" id="matcher-form">
+                    <div class="form-group">
+                        <label for="resume">Upload Your Resume (PDF, DOCX, TXT)</label>
+                        <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required
+                               style="padding: 1rem; border: 2px dashed var(--gray-300); border-radius: 0.5rem; background: var(--gray-50);">
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label>Job Description</label>
-                    <textarea name="job_description" rows="10" required placeholder="Paste the complete job description here...&#10;&#10;Include:&#10;- Job title&#10;- Required skills&#10;- Qualifications&#10;- Experience requirements&#10;- Job responsibilities"></textarea>
-                </div>
+                    <div class="form-group">
+                        <label for="job_description">Paste Job Description *</label>
+                        <textarea id="job_description" name="job_description" rows="10" required
+                                  placeholder="Paste the complete job description including requirements, skills needed, experience level, etc."></textarea>
+                    </div>
 
-                <button type="submit" class="btn btn-primary btn-large">🔍 Analyze Match</button>
-            </form>
-        </div>
+                    <button type="submit" class="btn btn-primary btn-large" style="width: 100%;">
+                        🤖 Analyze Match
+                    </button>
+                </form>
 
-        {% if match %}
-        <div class="match-results">
-            <div class="match-hero">
-                <div class="match-circle {% if match.score >= 75 %}match-excellent{% elif match.score >= 60 %}match-good{% elif match.score >= 45 %}match-fair{% else %}match-poor{% endif %}">
-                    <div class="match-percentage">{{ match.score }}%</div>
-                    <div class="match-label">Match Score</div>
-                </div>
-                <div class="match-verdict">
-                    <h2>{{ match.recommendation }}</h2>
-                    <p>{{ match.explanation }}</p>
+                <div style="background: var(--gray-100); padding: 1.5rem; border-radius: 1rem; margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">How It Works:</h3>
+                    <ul style="color: var(--gray-700); line-height: 2;">
+                        <li>AI analyzes your resume content</li>
+                        <li>Compares skills with job requirements</li>
+                        <li>Calculates experience match</li>
+                        <li>Provides actionable recommendations</li>
+                    </ul>
                 </div>
             </div>
 
-            <div class="breakdown-section">
-                <h3>📊 Detailed Breakdown</h3>
+            {% if result %}
+            <div class="section">
+                <h2>Match Analysis</h2>
                 
-                <div class="breakdown-card">
-                    <h4>✅ Skills Match</h4>
-                    <div class="skills-comparison">
-                        <div class="skills-column">
-                            <strong>Your Skills:</strong>
-                            <div class="skills-tags">
-                                {% for skill in match.candidate_skills %}
-                                <span class="skill-tag {% if skill in match.matched_skills %}matched{% endif %}">
-                                    {{ skill }}
-                                </span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        <div class="skills-column">
-                            <strong>Required Skills:</strong>
-                            <div class="skills-tags">
-                                {% for skill in match.job_skills %}
-                                <span class="skill-tag {% if skill in match.matched_skills %}matched{% endif %}">
-                                    {{ skill }}
-                                </span>
-                                {% endfor %}
-                            </div>
-                        </div>
+                <div style="text-align: center; margin: 2rem 0;">
+                    <div style="width: 200px; height: 200px; margin: 0 auto; border-radius: 50%; background: linear-gradient(135deg, 
+                        {% if result.match_score >= 75 %}#10B981 0%, #059669 100%{% elif result.match_score >= 60 %}#3B82F6 0%, #2563EB 100%{% elif result.match_score >= 45 %}#F59E0B 0%, #D97706 100%{% else %}#EF4444 0%, #DC2626 100%{% endif %}); 
+                        display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                        <div style="font-size: 4rem; font-weight: 800;">{{ result.match_score }}%</div>
+                        <div style="font-size: 1.25rem; font-weight: 600;">Match Score</div>
                     </div>
-                    <div class="match-stat">
-                        <span>Matched: {{ match.matched_skills|length }} / {{ match.job_skills|length }} required skills</span>
-                        <span class="stat-percentage">{{ ((match.matched_skills|length / match.job_skills|length * 100)|int if match.job_skills|length > 0 else 0) }}%</span>
-                    </div>
+                    <p style="margin-top: 1.5rem; font-size: 1.125rem; color: var(--gray-700); font-weight: 600;">
+                        {{ result.recommendation }}
+                    </p>
                 </div>
 
-                <div class="breakdown-card">
-                    <h4>💼 Experience Comparison</h4>
-                    <div class="comparison-row">
-                        <div>Your Experience: <strong>{{ match.candidate_experience }}</strong></div>
-                        <div>Required: <strong>{{ match.job_experience }}</strong></div>
-                    </div>
+                <div style="padding: 1.5rem; background: {% if result.match_score >= 60 %}#D1FAE5{% else %}#FEF3C7{% endif %}; border-radius: 0.75rem; margin-bottom: 2rem; border-left: 4px solid {% if result.match_score >= 60 %}#10B981{% else %}#F59E0B{% endif %};">
+                    <strong>💡 Recommendation:</strong>
+                    <p style="margin-top: 0.5rem;">
+                        {% if result.match_score >= 75 %}
+                            Excellent match! You should definitely apply for this position. Your skills and experience align very well with the requirements.
+                        {% elif result.match_score >= 60 %}
+                            Good match! You have strong qualifications for this role. Consider highlighting your matching skills in your cover letter.
+                        {% elif result.match_score >= 45 %}
+                            Moderate match. You meet some requirements but may want to emphasize transferable skills or gain additional experience in key areas.
+                        {% else %}
+                            Low match. Consider gaining more relevant experience or skills before applying, or look for positions that better match your current profile.
+                        {% endif %}
+                    </p>
                 </div>
 
-                <div class="breakdown-card">
-                    <h4>🎓 Education Comparison</h4>
-                    <div class="comparison-row">
-                        <div>Your Education: <strong>{{ match.candidate_education }}</strong></div>
-                        <div>Required: <strong>{{ match.job_education }}</strong></div>
-                    </div>
+                <h3 style="margin-bottom: 1rem;">✓ Matched Skills:</h3>
+                {% if result.skills_matched %}
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem;">
+                    {% for skill in result.skills_matched %}
+                    <span style="background: #D1FAE5; color: #065F46; padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600;">
+                        ✓ {{ skill }}
+                    </span>
+                    {% endfor %}
                 </div>
-
-                {% if match.missing_skills %}
-                <div class="breakdown-card missing">
-                    <h4>⚠️ Skills to Develop</h4>
-                    <div class="skills-tags">
-                        {% for skill in match.missing_skills %}
-                        <span class="skill-tag missing">{{ skill }}</span>
-                        {% endfor %}
-                    </div>
-                    <p class="help-text">Consider gaining experience in these areas to improve your match</p>
-                </div>
+                {% else %}
+                <p style="color: var(--gray-500); margin-bottom: 2rem;">No direct skill matches found. Consider adding relevant keywords to your resume.</p>
                 {% endif %}
 
-                <div class="action-buttons">
-                    <a href="{{ url_for('browse_jobs') }}" class="btn btn-primary">Browse More Jobs</a>
-                    <a href="{{ url_for('resume_scorer') }}" class="btn btn-secondary">Improve Resume</a>
+                <h3 style="margin-bottom: 1rem;">Profile Summary:</h3>
+                <div style="display: grid; gap: 1rem;">
+                    <div style="padding: 1rem; background: var(--gray-100); border-radius: 0.5rem; display: flex; justify-content: space-between;">
+                        <strong>Experience:</strong>
+                        <span>{{ result.experience_years }} years</span>
+                    </div>
+                    <div style="padding: 1rem; background: var(--gray-100); border-radius: 0.5rem; display: flex; justify-content: space-between;">
+                        <strong>Education:</strong>
+                        <span>{{ result.education_level }}</span>
+                    </div>
+                    <div style="padding: 1rem; background: var(--gray-100); border-radius: 0.5rem; display: flex; justify-content: space-between;">
+                        <strong>Skills Found:</strong>
+                        <span>{{ result.all_skills|length }}</span>
+                    </div>
+                    <div style="padding: 1rem; background: var(--gray-100); border-radius: 0.5rem; display: flex; justify-content: space-between;">
+                        <strong>Skill Match:</strong>
+                        <span>{{ result.skill_match_percentage }}%</span>
+                    </div>
                 </div>
+
+                {% if result.all_skills %}
+                <div style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">All Your Skills:</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        {% for skill in result.all_skills %}
+                        <span style="background: var(--gray-100); padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; color: var(--primary);">
+                            {{ skill }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
+            {% else %}
+            <div class="section" style="display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 4rem 2rem; text-align: center;">
+                <div style="font-size: 5rem; margin-bottom: 1rem;">🎯</div>
+                <h3 style="color: var(--gray-600); margin-bottom: 1rem;">Upload resume and add job description</h3>
+                <p style="color: var(--gray-500);">Your match analysis will appear here</p>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 TalentMatch AI. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.getElementById('matcher-form').addEventListener('submit', function() {
+            const btn = this.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Analyzing Match...';
+        });
+    </script>
 </body>
 </html>

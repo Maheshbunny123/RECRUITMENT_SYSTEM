@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applications - {{ job.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">🎯 TalentMatch AI</div>
+        <div class="nav-menu">
+            <a href="{{ url_for('recruiter_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('create_job') }}" class="nav-link">Post Job</a>
+            <div class="nav-user">
+                <span>💼 {{ session.full_name or session.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1>{{ job.title }}</h1>
+                <p style="color: var(--gray-600); margin-top: 0.5rem;">Total Applications: {{ applications|length }}</p>
+            </div>
+            <a href="{{ url_for('recruiter_dashboard') }}" class="btn">← Back to Dashboard</a>
+        </div>
+
+        <div class="section">
+            <h2>Applications (Sorted by Match Score)</h2>
+
+            {% if applications|length > 0 %}
+                <div style="display: grid; gap: 1.5rem; margin-top: 1.5rem;">
+                    {% for app in applications %}
+                    <div style="border: 2px solid var(--gray-200); border-radius: 1rem; padding: 1.5rem; transition: all 0.3s;"
+                         onmouseover="this.style.borderColor='var(--primary)'"
+                         onmouseout="this.style.borderColor='var(--gray-200)'">
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid var(--gray-200);">
+                            <div>
+                                <h3 style="margin-bottom: 0.5rem;">{{ app.candidate_name }}</h3>
+                                <p style="color: var(--gray-600); font-size: 0.875rem;">
+                                    📧 {{ app.candidate_email }}
+                                    {% if app.candidate_phone %}| 📱 {{ app.candidate_phone }}{% endif %}
+                                </p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div class="score-badge" style="background: linear-gradient(135deg, 
+                                    {% if app.match_score >= 75 %}#10B981 0%, #059669 100%{% elif app.match_score >= 60 %}#3B82F6 0%, #2563EB 100%{% elif app.match_score >= 45 %}#F59E0B 0%, #D97706 100%{% else %}#EF4444 0%, #DC2626 100%{% endif %}); margin-bottom: 0.5rem;">
+                                    {{ app.match_score }}%
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--gray-600);">
+                                    {% if app.match_score >= 75 %}⭐ Highly Recommended
+                                    {% elif app.match_score >= 60 %}✓ Recommended
+                                    {% elif app.match_score >= 45 %}⚠ Maybe
+                                    {% else %}✗ Not Recommended
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <strong>Experience:</strong> {{ app.experience_years }} years
+                            </div>
+                            <div>
+                                <strong>Education:</strong> {{ app.education_level }}
+                            </div>
+                            <div>
+                                <strong>Applied:</strong> {{ app.applied_at[:10] }}
+                            </div>
+                            <div>
+                                <strong>Status:</strong>
+                                <span class="badge badge-{{ 'success' if app.status == 'shortlisted' else 'warning' if app.status == 'pending' else 'primary' if app.status == 'interview' else 'danger' }}">
+                                    {{ app.status.title() }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if app.skills_matched %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong>✓ Matched Skills:</strong>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                                {% set skills_list = [] %}
+                                {% if app.skills_matched.startswith('[') %}
+                                    {% set skills_str = app.skills_matched[1:-1] %}
+                                    {% for skill in skills_str.split(',') %}
+                                        {% set clean_skill = skill.strip().strip('"').strip("'") %}
+                                        {% if clean_skill %}
+                                            {% set _ = skills_list.append(clean_skill) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                
+                                {% for skill in skills_list[:10] %}
+                                <span style="background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; color: var(--primary);">
+                                    {{ skill }}
+                                </span>
+                                {% endfor %}
+                                {% if skills_list|length > 10 %}
+                                <span style="background: var(--gray-100); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; color: var(--primary);">
+                                    +{{ skills_list|length - 10 }} more
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if app.cover_letter %}
+                        <div style="background: var(--gray-100); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;">
+                            <strong>📝 Cover Letter:</strong>
+                            <p style="margin-top: 0.5rem;">{{ app.cover_letter[:200] }}{% if app.cover_letter|length > 200 %}...{% endif %}</p>
+                        </div>
+                        {% endif %}
+
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <select onchange="updateStatus({{ app.id }}, this.value)" style="padding: 0.5rem 1rem; border: 2px solid var(--gray-300); border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
+                                <option value="pending" {% if app.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="shortlisted" {% if app.status == 'shortlisted' %}selected{% endif %}>Shortlisted</option>
+                                <option value="interview" {% if app.status == 'interview' %}selected{% endif %}>Interview</option>
+                                <option value="rejected" {% if app.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                                <option value="hired" {% if app.status == 'hired' %}selected{% endif %}>Hired</option>
+                            </select>
+
+                            {% if app.status == 'pending' %}
+                            <button onclick="aiShortlist({{ app.id }}, this)" class="btn btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                                🤖 AI Shortlist
+                            </button>
+                            {% endif %}
+
+                            <a href="{{ url_for('download_resume', app_id=app.id) }}" class="btn btn-sm">
+                                📥 Download Resume
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="text-align: center; padding: 3rem; color: var(--gray-500);">
+                    No applications yet. Share your job posting to start receiving applications.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 TalentMatch AI. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function updateStatus(appId, status) {
+            fetch('/recruiter/applications/' + appId + '/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status: status})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Status updated successfully!', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                }
+            })
+            .catch(() => showAlert('Error updating status', 'error'));
+        }
+
+        function aiShortlist(appId, btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> AI Processing...';
+            
+            fetch('/recruiter/applications/' + appId + '/ai-shortlist', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const msg = data.status === 'shortlisted' ? 
+                        `✓ SHORTLISTED (Score: ${data.match_score}%)` : 
+                        `✗ REJECTED (Score: ${data.match_score}%)`;
+                    showAlert('AI Decision: ' + msg, data.status === 'shortlisted' ? 'success' : 'warning');
+                    setTimeout(() => location.reload(), 2000);
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = '🤖 AI Shortlist';
+                showAlert('Error processing AI shortlist', 'error');
+            });
+        }
+
+        function showAlert(msg, type) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-' + type;
+            alert.textContent = msg;
+            alert.style.position = 'fixed';
+            alert.style.top = '20px';
+            alert.style.right = '20px';
+            alert.style.zIndex = '1000';
+            alert.style.minWidth = '300px';
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>

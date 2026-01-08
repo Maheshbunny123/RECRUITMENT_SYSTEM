@@ -3,217 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apply for {{ job.title }} - Recruitment System</title>
+    <title>Apply - {{ job.title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-brand">🎯 Recruitment System</div>
+        <div class="nav-brand">🎯 TalentMatch AI</div>
         <div class="nav-menu">
-            <a href="{{ url_for('public_jobs') }}" class="nav-link">← Back to Jobs</a>
+            <a href="{{ url_for('jobseeker_dashboard') }}" class="nav-link">← Back to Dashboard</a>
         </div>
     </nav>
-    
+
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
-        <div class="upload-page">
-            <!-- Job Details Card -->
-            <div class="job-details-card">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+            <div class="section">
                 <h1>{{ job.title }}</h1>
                 
-                <div class="job-meta">
-                    <span class="job-meta-item">
-                        📍 {{ job.location or 'Remote' }}
-                    </span>
-                    <span class="job-meta-item">
-                        💼 {{ job.job_type or 'Full-time' }}
-                    </span>
-                    <span class="job-meta-item">
-                        📊 {{ job.experience_level or 'Mid-level' }}
-                    </span>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.5rem 0; padding-bottom: 1.5rem; border-bottom: 2px solid var(--gray-200);">
+                    <span class="badge badge-primary">{{ job.location or 'Remote' }}</span>
+                    <span class="badge badge-success">{{ job.job_type or 'Full-time' }}</span>
+                    <span class="badge badge-primary">{{ job.experience_level or 'Mid-level' }}</span>
                     {% if job.salary_range %}
-                    <span class="job-meta-item">
-                        💰 {{ job.salary_range }}
-                    </span>
+                    <span class="badge badge-success">{{ job.salary_range }}</span>
                     {% endif %}
                 </div>
                 
-                <div class="job-section">
-                    <h3>Job Description</h3>
-                    <p>{{ job.description }}</p>
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">Job Description</h3>
+                    <p style="line-height: 1.8; color: var(--gray-700);">{{ job.description }}</p>
                 </div>
                 
-                <div class="job-section">
-                    <h3>Requirements</h3>
-                    <p>{{ job.requirements }}</p>
+                <div>
+                    <h3 style="margin-bottom: 1rem;">Requirements</h3>
+                    <p style="line-height: 1.8; color: var(--gray-700);">{{ job.requirements }}</p>
                 </div>
             </div>
-            
-            <!-- Application Form -->
-            <div class="application-form-card">
+
+            <div class="section">
                 <h2>Apply for this Position</h2>
-                <p class="form-description">
-                    ✨ Your resume will be automatically screened using AI to match your skills 
-                    with job requirements. High-scoring candidates will be contacted within 3-5 business days.
+                <p style="color: var(--gray-600); margin-bottom: 2rem;">
+                    ✨ Your resume will be automatically screened using AI. High-scoring candidates are prioritized!
                 </p>
-                
-                <form method="POST" enctype="multipart/form-data" id="application-form">
+
+                <form method="POST" enctype="multipart/form-data" id="apply-form">
                     <div class="form-group">
-                        <label for="candidate_name">Full Name *</label>
-                        <input type="text" id="candidate_name" name="candidate_name" required>
+                        <label for="resume">Upload Resume * (PDF, DOCX, TXT - Max 16MB)</label>
+                        <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required 
+                               style="padding: 1rem; border: 2px dashed var(--gray-300); border-radius: 0.5rem; background: var(--gray-50);">
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="candidate_email">Email Address *</label>
-                        <input type="email" id="candidate_email" name="candidate_email" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="candidate_phone">Phone Number *</label>
-                        <input type="tel" id="candidate_phone" name="candidate_phone" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="resume">Upload Resume * (PDF, DOCX, or TXT - Max 16MB)</label>
-                        <div class="file-upload-wrapper">
-                            <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required>
-                            <div class="file-upload-display">
-                                <span class="file-upload-icon">📎</span>
-                                <span class="file-upload-text">Click to upload or drag and drop</span>
-                                <span class="file-name"></span>
-                            </div>
-                        </div>
-                    </div>
-                    
+
                     <div class="form-group">
                         <label for="cover_letter">Cover Letter (Optional)</label>
                         <textarea id="cover_letter" name="cover_letter" rows="6" 
-                                  placeholder="Tell us why you're a great fit for this role..."></textarea>
+                                  placeholder="Why are you a great fit for this role?"></textarea>
                     </div>
-                    
-                    <div class="ai-info-box">
-                        <h4>🤖 AI-Powered Screening</h4>
-                        <p>Your application will be evaluated on:</p>
-                        <ul>
-                            <li>✓ Skills match with job requirements</li>
-                            <li>✓ Years of relevant experience</li>
-                            <li>✓ Education qualifications</li>
-                            <li>✓ Overall profile strength</li>
+
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 1rem; margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem;">🤖 AI Screening</h4>
+                        <p style="margin-bottom: 1rem;">Your application will be evaluated on:</p>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 0.5rem 0;">✓ Skills match with requirements</li>
+                            <li style="padding: 0.5rem 0;">✓ Years of experience</li>
+                            <li style="padding: 0.5rem 0;">✓ Education qualifications</li>
+                            <li style="padding: 0.5rem 0;">✓ Overall profile strength</li>
                         </ul>
-                        <p style="margin-top: 1rem; font-size: 0.875rem; color: #6b7280;">
-                            Candidates scoring 60% or higher will be automatically shortlisted for review.
+                        <p style="margin-top: 1rem; font-size: 0.875rem; opacity: 0.9;">
+                            Candidates scoring 60% or higher are automatically shortlisted!
                         </p>
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary btn-large" id="submit-btn">
+
+                    <button type="submit" class="btn btn-primary btn-large" style="width: 100%;">
                         🚀 Submit Application
                     </button>
                 </form>
             </div>
         </div>
     </div>
-    
+
     <footer class="footer">
-        <p>&copy; 2024 AI-Powered Recruitment System. All rights reserved.</p>
+        <p>&copy; 2024 TalentMatch AI. All rights reserved.</p>
     </footer>
-    
+
     <script>
-        // File upload handling
-        const fileInput = document.getElementById('resume');
-        const fileNameDisplay = document.querySelector('.file-name');
-        const fileUploadDisplay = document.querySelector('.file-upload-display');
-        
-        fileInput.addEventListener('change', function(e) {
-            if (this.files && this.files[0]) {
-                const fileName = this.files[0].name;
-                const fileSize = (this.files[0].size / 1024 / 1024).toFixed(2);
-                fileNameDisplay.textContent = `${fileName} (${fileSize} MB)`;
-                fileUploadDisplay.classList.add('file-selected');
-            }
+        document.getElementById('apply-form').addEventListener('submit', function() {
+            const btn = this.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Processing with AI...';
         });
-        
-        // Form submission handling
-        const form = document.getElementById('application-form');
-        const submitBtn = document.getElementById('submit-btn');
-        
-        form.addEventListener('submit', function() {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner"></span> Processing with AI...';
-        });
-        
-        // Drag and drop handling
-        const fileUploadWrapper = document.querySelector('.file-upload-wrapper');
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            fileUploadWrapper.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            fileUploadWrapper.addEventListener(eventName, highlight, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            fileUploadWrapper.addEventListener(eventName, unhighlight, false);
-        });
-        
-        function highlight(e) {
-            fileUploadWrapper.classList.add('drag-over');
-        }
-        
-        function unhighlight(e) {
-            fileUploadWrapper.classList.remove('drag-over');
-        }
-        
-        fileUploadWrapper.addEventListener('drop', handleDrop, false);
-        
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            fileInput.files = files;
-            
-            const event = new Event('change', { bubbles: true });
-            fileInput.dispatchEvent(event);
-        }
     </script>
-    
-    <style>
-        .ai-info-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .ai-info-box h4 {
-            margin-bottom: 1rem;
-            font-size: 1.2rem;
-        }
-        
-        .ai-info-box ul {
-            list-style: none;
-            padding: 0;
-            margin: 1rem 0;
-        }
-        
-        .ai-info-box li {
-            padding: 0.5rem 0;
-            font-size: 0.95rem;
-        }
-    </style>
 </body>
 </html>

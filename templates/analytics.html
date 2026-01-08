@@ -1,56 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Analytics Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Recruitment System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<header>
-    <h1>Analytics Dashboard</h1>
-    <a class="btn" href="{{ url_for('recruiter_dashboard') }}">Back Dashboard</a>
-</header>
-<div class="container dashboard">
-    <div class="card">
-        <h3>Application Status Distribution</h3>
-        <canvas id="statusChart"></canvas>
+    <nav class="navbar">
+        <div class="nav-brand">🎯 Recruitment System</div>
+        <div class="nav-menu">
+            <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('create_job') }}" class="nav-link">Post Job</a>
+            <a href="{{ url_for('analytics') }}" class="nav-link active">Analytics</a>
+            <div class="nav-user">
+                <span>👤 {{ session.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1>Recruitment Analytics</h1>
+        </div>
+        
+        <div class="analytics-grid">
+            <div class="section">
+                <h2>Applications by Status</h2>
+                <canvas id="statusChart"></canvas>
+            </div>
+            
+            <div class="section">
+                <h2>Application Status Distribution</h2>
+                <div class="status-list">
+                    {% set total_count = namespace(value=0) %}
+                    {% for status in applications_by_status %}
+                        {% set total_count.value = total_count.value + status.count %}
+                    {% endfor %}
+                    
+                    {% for status in applications_by_status %}
+                    <div class="status-item">
+                        <div class="status-info">
+                            <span class="badge badge-{{ 'success' if status.status == 'shortlisted' else 'warning' if status.status == 'pending' else 'info' if status.status == 'interview' else 'danger' }}">
+                                {{ status.status.title() }}
+                            </span>
+                            <span class="status-count">{{ status.count }} applications</span>
+                        </div>
+                        <div class="status-bar">
+                            {% set percentage = (status.count / total_count.value * 100)|round|int if total_count.value > 0 else 0 %}
+                            <div class="status-bar-fill" style="width: {{ percentage }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="card">
-        <h3>Average Resume Scores</h3>
-        <canvas id="scoreChart"></canvas>
-    </div>
-</div>
-
-<script>
-const statusData = {
-    labels: {{ status_counts.keys()|list }},
-    datasets: [{
-        label: 'Applications',
-        data: {{ status_counts.values()|list }},
-        backgroundColor: ['#28a745','#fd7e14','#dc3545','#0dcaf0']
-    }]
-};
-
-const scoreData = {
-    labels: {{ job_titles }},
-    datasets: [{
-        label: 'Average Score',
-        data: {{ avg_scores }},
-        backgroundColor: '#0d6efd'
-    }]
-};
-
-new Chart(document.getElementById('statusChart'), {
-    type: 'pie',
-    data: statusData
-});
-
-new Chart(document.getElementById('scoreChart'), {
-    type: 'bar',
-    data: scoreData,
-    options: { scales: { y: { beginAtZero: true, max: 100 } } }
-});
-</script>
+    
+    <footer class="footer">
+        <p>&copy; 2024 AI-Powered Recruitment System. All rights reserved.</p>
+    </footer>
+    
+    <script>
+        const statusData = {
+            labels: [{% for status in applications_by_status %}'{{ status.status.title() }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Applications',
+                data: [{% for status in applications_by_status %}{{ status.count }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(245, 158, 11, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(139, 92, 246, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)',
+                    'rgba(239, 68, 68, 1)',
+                    'rgba(139, 92, 246, 1)'
+                ],
+                borderWidth: 2
+            }]
+        };
+        
+        const statusChart = new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: statusData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: {
+                                size: 14
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+    
+    <style>
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .status-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .status-item {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background: var(--light);
+        }
+        
+        .status-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .status-count {
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .status-bar {
+            height: 8px;
+            background: var(--white);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        
+        .status-bar-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 9999px;
+            transition: width 0.5s ease;
+        }
+        
+        @media (max-width: 768px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </body>
 </html>

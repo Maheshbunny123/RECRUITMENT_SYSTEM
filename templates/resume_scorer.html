@@ -3,128 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resume Quality Scorer</title>
+    <title>Resume Scorer - TalentMatch AI</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-brand">🎯 RecruitAI - Resume Scorer</div>
+        <div class="nav-brand">🎯 TalentMatch AI</div>
         <div class="nav-menu">
-            <a href="{{ url_for('jobseeker_dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('browse_jobs') }}">Browse Jobs</a>
-            <a href="{{ url_for('resume_scorer') }}" class="active">Resume Scorer</a>
-            <a href="{{ url_for('job_matcher') }}">Job Matcher</a>
-            <a href="{{ url_for('my_applications') }}">My Applications</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('jobseeker_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('resume_scorer') }}" class="nav-link active">Resume Scorer</a>
+            <a href="{{ url_for('job_matcher') }}" class="nav-link">Job Matcher</a>
+            <div class="nav-user">
+                <span>👤 {{ session.full_name or session.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm">Logout</a>
+            </div>
         </div>
     </nav>
 
     <div class="container">
         <div class="page-header">
-            <h1>📊 Resume Quality Scorer</h1>
-            <p>Upload your resume to get AI-powered quality analysis and improvement suggestions</p>
+            <div>
+                <h1>📊 Resume Quality Scorer</h1>
+                <p style="color: var(--gray-600); margin-top: 0.5rem;">Get instant AI-powered feedback on your resume</p>
+            </div>
         </div>
 
-        <div class="upload-card">
-            <form method="POST" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label>Upload Your Resume</label>
-                    <input type="file" name="resume" accept=".pdf,.docx,.txt" required>
-                    <small>Supported formats: PDF, DOCX, TXT</small>
-                </div>
-                <button type="submit" class="btn btn-primary btn-large">Analyze Resume</button>
-            </form>
-        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div class="section">
+                <h2>Upload Your Resume</h2>
+                <p style="color: var(--gray-600); margin-bottom: 2rem;">
+                    Our AI will analyze your resume and provide a detailed quality score with improvement suggestions.
+                </p>
 
-        {% if score %}
-        <div class="score-results">
-            <div class="score-hero">
-                <div class="score-circle grade-{{ score.grade.lower() }}">
-                    <div class="score-value">{{ score.overall_score }}/100</div>
-                    <div class="score-grade">Grade: {{ score.grade }}</div>
-                </div>
-                <div class="score-summary">
-                    <h2>{{ score.summary }}</h2>
-                    <p>Your resume has been analyzed across multiple dimensions</p>
+                <form method="POST" enctype="multipart/form-data" id="scorer-form">
+                    <div class="form-group">
+                        <label for="resume">Upload Resume (PDF, DOCX, TXT - Max 16MB)</label>
+                        <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required
+                               style="padding: 1rem; border: 2px dashed var(--gray-300); border-radius: 0.5rem; background: var(--gray-50);">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large" style="width: 100%;">
+                        🤖 Analyze Resume
+                    </button>
+                </form>
+
+                <div style="background: var(--gray-100); padding: 1.5rem; border-radius: 1rem; margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">What We Analyze:</h3>
+                    <ul style="color: var(--gray-700); line-height: 2;">
+                        <li><strong>Length & Content</strong> (15 pts) - Optimal word count</li>
+                        <li><strong>Contact Information</strong> (10 pts) - Email & phone</li>
+                        <li><strong>Skills</strong> (25 pts) - Technical & soft skills</li>
+                        <li><strong>Experience</strong> (20 pts) - Work history depth</li>
+                        <li><strong>Education</strong> (15 pts) - Academic qualifications</li>
+                        <li><strong>Structure</strong> (15 pts) - Proper formatting</li>
+                    </ul>
                 </div>
             </div>
 
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-icon">📝</span>
-                        <span class="metric-name">Content Quality</span>
+            {% if result %}
+            <div class="section">
+                <h2>Analysis Results</h2>
+                
+                <div style="text-align: center; margin: 2rem 0;">
+                    <div style="width: 200px; height: 200px; margin: 0 auto; border-radius: 50%; background: linear-gradient(135deg, 
+                        {% if result.total_score >= 85 %}#10B981 0%, #059669 100%{% elif result.total_score >= 75 %}#3B82F6 0%, #2563EB 100%{% elif result.total_score >= 65 %}#F59E0B 0%, #D97706 100%{% else %}#EF4444 0%, #DC2626 100%{% endif %}); 
+                        display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                        <div style="font-size: 4rem; font-weight: 800;">{{ result.total_score }}</div>
+                        <div style="font-size: 1.5rem; font-weight: 600;">{{ result.grade }}</div>
                     </div>
-                    <div class="metric-bar">
-                        <div class="metric-fill" style="width: {{ score.content_score }}%; background: #667eea;"></div>
-                    </div>
-                    <div class="metric-score">{{ score.content_score }}/100</div>
+                    <p style="margin-top: 1.5rem; font-size: 1.125rem; color: var(--gray-700);">
+                        {{ result.feedback }}
+                    </p>
                 </div>
 
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-icon">🎯</span>
-                        <span class="metric-name">Skills Diversity</span>
-                    </div>
-                    <div class="metric-bar">
-                        <div class="metric-fill" style="width: {{ score.skills_score }}%; background: #f093fb;"></div>
-                    </div>
-                    <div class="metric-score">{{ score.skills_score }}/100</div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-icon">💼</span>
-                        <span class="metric-name">Experience Level</span>
-                    </div>
-                    <div class="metric-bar">
-                        <div class="metric-fill" style="width: {{ score.experience_score }}%; background: #4facfe;"></div>
-                    </div>
-                    <div class="metric-score">{{ score.experience_score }}/100</div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-icon">📚</span>
-                        <span class="metric-name">Format & Structure</span>
-                    </div>
-                    <div class="metric-bar">
-                        <div class="metric-fill" style="width: {{ score.format_score }}%; background: #43e97b;"></div>
-                    </div>
-                    <div class="metric-score">{{ score.format_score }}/100</div>
-                </div>
-            </div>
-
-            <div class="details-section">
-                <h3>📋 Detected Information</h3>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <strong>Skills Found:</strong>
-                        <div class="skills-tags">
-                            {% for skill in score.skills %}
-                            <span class="skill-tag">{{ skill }}</span>
-                            {% endfor %}
+                <h3 style="margin: 2rem 0 1rem 0;">Score Breakdown:</h3>
+                <div style="display: grid; gap: 1rem;">
+                    {% for key, value in result.scores.items() %}
+                    <div style="background: var(--gray-100); padding: 1rem; border-radius: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong style="text-transform: capitalize;">{{ key }}</strong>
+                            <strong style="color: var(--primary);">{{ value }} / 
+                                {% if key == 'length' %}15
+                                {% elif key == 'contact' %}10
+                                {% elif key == 'skills' %}25
+                                {% elif key == 'experience' %}20
+                                {% elif key == 'education' %}15
+                                {% elif key == 'structure' %}15
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <div style="height: 8px; background: var(--gray-300); border-radius: 9999px; overflow: hidden;">
+                            <div style="height: 100%; background: var(--primary); width: {{ (value / (15 if key == 'length' else 10 if key == 'contact' else 25 if key == 'skills' else 20 if key == 'experience' else 15)) * 100 }}%; transition: width 0.5s;"></div>
                         </div>
                     </div>
-                    <div class="info-item">
-                        <strong>Experience:</strong> {{ score.experience }}
-                    </div>
-                    <div class="info-item">
-                        <strong>Education:</strong> {{ score.education }}
+                    {% endfor %}
+                </div>
+
+                {% if result.improvements %}
+                <h3 style="margin: 2rem 0 1rem 0;">💡 Improvement Suggestions:</h3>
+                <div style="background: #FEF3C7; padding: 1.5rem; border-radius: 0.75rem; border-left: 4px solid #F59E0B;">
+                    <ul style="margin: 0; padding-left: 1.5rem; color: var(--gray-800);">
+                        {% for improvement in result.improvements %}
+                        <li style="margin-bottom: 0.75rem;">{{ improvement }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <div style="margin-top: 2rem; padding: 1.5rem; background: var(--gray-100); border-radius: 0.75rem;">
+                    <strong>📈 Quick Stats:</strong>
+                    <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>Word Count: <strong>{{ result.word_count }}</strong></div>
+                        <div>Skills Found: <strong>{{ result.skills_found }}</strong></div>
+                        <div>Experience: <strong>{{ result.experience_years }} years</strong></div>
+                        <div>Contact Info: <strong>{% if result.has_email and result.has_phone %}Complete{% elif result.has_email or result.has_phone %}Partial{% else %}Missing{% endif %}</strong></div>
                     </div>
                 </div>
             </div>
-
-            <div class="suggestions-section">
-                <h3>💡 Improvement Suggestions</h3>
-                <ul class="suggestions-list">
-                    {% for suggestion in score.suggestions %}
-                    <li>{{ suggestion }}</li>
-                    {% endfor %}
-                </ul>
+            {% else %}
+            <div class="section" style="display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 4rem 2rem; text-align: center;">
+                <div style="font-size: 5rem; margin-bottom: 1rem;">📄</div>
+                <h3 style="color: var(--gray-600); margin-bottom: 1rem;">Upload a resume to get started</h3>
+                <p style="color: var(--gray-500);">Your analysis results will appear here</p>
             </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 TalentMatch AI. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.getElementById('scorer-form').addEventListener('submit', function() {
+            const btn = this.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+        });
+    </script>
 </body>
 </html>
