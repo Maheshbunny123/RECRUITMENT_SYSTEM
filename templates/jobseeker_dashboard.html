@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Seeker Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">🎯 RecruitAI - Job Seeker</div>
+        <div class="nav-menu">
+            <a href="{{ url_for('jobseeker_dashboard') }}" class="active">Dashboard</a>
+            <a href="{{ url_for('browse_jobs') }}">Browse Jobs</a>
+            <a href="{{ url_for('resume_scorer') }}">Resume Scorer</a>
+            <a href="{{ url_for('job_matcher') }}">Job Matcher</a>
+            <a href="{{ url_for('my_applications') }}">My Applications</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Welcome, {{ session.name }}!</h1>
+            <p>Manage your job search and applications</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="stat-number">{{ stats.total_applications }}</div>
+                <div class="stat-label">Total Applications</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-number">{{ stats.pending }}</div>
+                <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-number">{{ stats.shortlisted }}</div>
+                <div class="stat-label">Shortlisted</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="stat-number">{{ stats.available_jobs }}</div>
+                <div class="stat-label">Available Jobs</div>
+            </div>
+        </div>
+
+        <div class="tools-grid">
+            <div class="tool-card">
+                <div class="tool-icon">📊</div>
+                <h3>Resume Quality Scorer</h3>
+                <p>Get AI-powered analysis of your resume quality with actionable improvement tips</p>
+                <a href="{{ url_for('resume_scorer') }}" class="btn btn-primary">Try Now</a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-icon">🎯</div>
+                <h3>Job-Resume Matcher</h3>
+                <p>Compare your resume against any job description to see how well you match</p>
+                <a href="{{ url_for('job_matcher') }}" class="btn btn-primary">Match Now</a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-icon">💼</div>
+                <h3>Browse Jobs</h3>
+                <p>Explore available job openings and apply with one click</p>
+                <a href="{{ url_for('browse_jobs') }}" class="btn btn-primary">View Jobs</a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-icon">📋</div>
+                <h3>My Applications</h3>
+                <p>Track all your job applications and their current status</p>
+                <a href="{{ url_for('my_applications') }}" class="btn btn-primary">View Applications</a>
+            </div>
+        </div>
+
+        <div class="recent-jobs">
+            <h2>🔥 Recently Posted Jobs</h2>
+            <div class="jobs-list">
+                {% for job in recent_jobs %}
+                <div class="job-item">
+                    <div class="job-header">
+                        <h3>{{ job.title }}</h3>
+                        <span class="job-date">{{ job.created_at }}</span>
+                    </div>
+                    <p class="job-company">{{ job.company }}</p>
+                    <p class="job-description">{{ job.description[:150] }}...</p>
+                    <div class="job-footer">
+                        <span class="job-location">📍 {{ job.location }}</span>
+                        <a href="{{ url_for('apply_job', job_id=job.id) }}" class="btn btn-small">Apply Now</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

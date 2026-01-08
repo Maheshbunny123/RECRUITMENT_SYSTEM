@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job-Resume Matcher</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">🎯 RecruitAI - Job Matcher</div>
+        <div class="nav-menu">
+            <a href="{{ url_for('jobseeker_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('browse_jobs') }}">Browse Jobs</a>
+            <a href="{{ url_for('resume_scorer') }}">Resume Scorer</a>
+            <a href="{{ url_for('job_matcher') }}" class="active">Job Matcher</a>
+            <a href="{{ url_for('my_applications') }}">My Applications</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>🎯 Job-Resume Matcher</h1>
+            <p>Compare your resume against any job description to see how well you match</p>
+        </div>
+
+        <div class="matcher-form">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label>Upload Your Resume</label>
+                            <input type="file" name="resume" accept=".pdf,.docx,.txt" required>
+                            <small>PDF, DOCX, or TXT format</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Job Description</label>
+                    <textarea name="job_description" rows="10" required placeholder="Paste the complete job description here...&#10;&#10;Include:&#10;- Job title&#10;- Required skills&#10;- Qualifications&#10;- Experience requirements&#10;- Job responsibilities"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-large">🔍 Analyze Match</button>
+            </form>
+        </div>
+
+        {% if match %}
+        <div class="match-results">
+            <div class="match-hero">
+                <div class="match-circle {% if match.score >= 75 %}match-excellent{% elif match.score >= 60 %}match-good{% elif match.score >= 45 %}match-fair{% else %}match-poor{% endif %}">
+                    <div class="match-percentage">{{ match.score }}%</div>
+                    <div class="match-label">Match Score</div>
+                </div>
+                <div class="match-verdict">
+                    <h2>{{ match.recommendation }}</h2>
+                    <p>{{ match.explanation }}</p>
+                </div>
+            </div>
+
+            <div class="breakdown-section">
+                <h3>📊 Detailed Breakdown</h3>
+                
+                <div class="breakdown-card">
+                    <h4>✅ Skills Match</h4>
+                    <div class="skills-comparison">
+                        <div class="skills-column">
+                            <strong>Your Skills:</strong>
+                            <div class="skills-tags">
+                                {% for skill in match.candidate_skills %}
+                                <span class="skill-tag {% if skill in match.matched_skills %}matched{% endif %}">
+                                    {{ skill }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="skills-column">
+                            <strong>Required Skills:</strong>
+                            <div class="skills-tags">
+                                {% for skill in match.job_skills %}
+                                <span class="skill-tag {% if skill in match.matched_skills %}matched{% endif %}">
+                                    {{ skill }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="match-stat">
+                        <span>Matched: {{ match.matched_skills|length }} / {{ match.job_skills|length }} required skills</span>
+                        <span class="stat-percentage">{{ ((match.matched_skills|length / match.job_skills|length * 100)|int if match.job_skills|length > 0 else 0) }}%</span>
+                    </div>
+                </div>
+
+                <div class="breakdown-card">
+                    <h4>💼 Experience Comparison</h4>
+                    <div class="comparison-row">
+                        <div>Your Experience: <strong>{{ match.candidate_experience }}</strong></div>
+                        <div>Required: <strong>{{ match.job_experience }}</strong></div>
+                    </div>
+                </div>
+
+                <div class="breakdown-card">
+                    <h4>🎓 Education Comparison</h4>
+                    <div class="comparison-row">
+                        <div>Your Education: <strong>{{ match.candidate_education }}</strong></div>
+                        <div>Required: <strong>{{ match.job_education }}</strong></div>
+                    </div>
+                </div>
+
+                {% if match.missing_skills %}
+                <div class="breakdown-card missing">
+                    <h4>⚠️ Skills to Develop</h4>
+                    <div class="skills-tags">
+                        {% for skill in match.missing_skills %}
+                        <span class="skill-tag missing">{{ skill }}</span>
+                        {% endfor %}
+                    </div>
+                    <p class="help-text">Consider gaining experience in these areas to improve your match</p>
+                </div>
+                {% endif %}
+
+                <div class="action-buttons">
+                    <a href="{{ url_for('browse_jobs') }}" class="btn btn-primary">Browse More Jobs</a>
+                    <a href="{{ url_for('resume_scorer') }}" class="btn btn-secondary">Improve Resume</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

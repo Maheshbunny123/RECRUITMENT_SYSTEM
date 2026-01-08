@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Quality Scorer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">🎯 RecruitAI - Resume Scorer</div>
+        <div class="nav-menu">
+            <a href="{{ url_for('jobseeker_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('browse_jobs') }}">Browse Jobs</a>
+            <a href="{{ url_for('resume_scorer') }}" class="active">Resume Scorer</a>
+            <a href="{{ url_for('job_matcher') }}">Job Matcher</a>
+            <a href="{{ url_for('my_applications') }}">My Applications</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>📊 Resume Quality Scorer</h1>
+            <p>Upload your resume to get AI-powered quality analysis and improvement suggestions</p>
+        </div>
+
+        <div class="upload-card">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Upload Your Resume</label>
+                    <input type="file" name="resume" accept=".pdf,.docx,.txt" required>
+                    <small>Supported formats: PDF, DOCX, TXT</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-large">Analyze Resume</button>
+            </form>
+        </div>
+
+        {% if score %}
+        <div class="score-results">
+            <div class="score-hero">
+                <div class="score-circle grade-{{ score.grade.lower() }}">
+                    <div class="score-value">{{ score.overall_score }}/100</div>
+                    <div class="score-grade">Grade: {{ score.grade }}</div>
+                </div>
+                <div class="score-summary">
+                    <h2>{{ score.summary }}</h2>
+                    <p>Your resume has been analyzed across multiple dimensions</p>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-icon">📝</span>
+                        <span class="metric-name">Content Quality</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" style="width: {{ score.content_score }}%; background: #667eea;"></div>
+                    </div>
+                    <div class="metric-score">{{ score.content_score }}/100</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-icon">🎯</span>
+                        <span class="metric-name">Skills Diversity</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" style="width: {{ score.skills_score }}%; background: #f093fb;"></div>
+                    </div>
+                    <div class="metric-score">{{ score.skills_score }}/100</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-icon">💼</span>
+                        <span class="metric-name">Experience Level</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" style="width: {{ score.experience_score }}%; background: #4facfe;"></div>
+                    </div>
+                    <div class="metric-score">{{ score.experience_score }}/100</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-icon">📚</span>
+                        <span class="metric-name">Format & Structure</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" style="width: {{ score.format_score }}%; background: #43e97b;"></div>
+                    </div>
+                    <div class="metric-score">{{ score.format_score }}/100</div>
+                </div>
+            </div>
+
+            <div class="details-section">
+                <h3>📋 Detected Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <strong>Skills Found:</strong>
+                        <div class="skills-tags">
+                            {% for skill in score.skills %}
+                            <span class="skill-tag">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <strong>Experience:</strong> {{ score.experience }}
+                    </div>
+                    <div class="info-item">
+                        <strong>Education:</strong> {{ score.education }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="suggestions-section">
+                <h3>💡 Improvement Suggestions</h3>
+                <ul class="suggestions-list">
+                    {% for suggestion in score.suggestions %}
+                    <li>{{ suggestion }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
