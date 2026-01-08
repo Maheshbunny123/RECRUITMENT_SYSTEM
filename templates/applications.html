@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applications - {{ job.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">🎯 Recruitment System</div>
+        <div class="nav-menu">
+            <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('create_job') }}" class="nav-link">Post Job</a>
+            <a href="{{ url_for('analytics') }}" class="nav-link">Analytics</a>
+            <div class="nav-user">
+                <span>👤 {{ session.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1>{{ job.title }}</h1>
+                <p style="color: #6b7280; margin-top: 0.5rem;">Total Applications: {{ applications|length }}</p>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="btn">Back to Dashboard</a>
+        </div>
+        
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Applications (Sorted by Match Score)</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterApplications('all')">All</button>
+                    <button class="filter-btn" onclick="filterApplications('pending')">Pending</button>
+                    <button class="filter-btn" onclick="filterApplications('shortlisted')">Shortlisted</button>
+                    <button class="filter-btn" onclick="filterApplications('interview')">Interview</button>
+                </div>
+            </div>
+            
+            {% if applications|length > 0 %}
+            <div class="applications-grid">
+                {% for app in applications %}
+                <div class="application-card" data-status="{{ app.status }}">
+                    <div class="app-header">
+                        <div>
+                            <h3>{{ app.candidate_name }}</h3>
+                            <p class="app-contact">
+                                📧 {{ app.candidate_email }}
+                                {% if app.candidate_phone %}
+                                | 📱 {{ app.candidate_phone }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <div class="score-badge" style="background: linear-gradient(135deg, 
+                                {% if app.match_score >= 75 %}#10b981 0%, #059669 100%{% elif app.match_score >= 60 %}#3b82f6 0%, #2563eb 100%{% elif app.match_score >= 45 %}#f59e0b 0%, #d97706 100%{% else %}#ef4444 0%, #dc2626 100%{% endif %})">
+                                {{ app.match_score }}%
+                            </div>
+                            <p style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280;">
+                                {% if app.match_score >= 75 %}⭐ Highly Recommended
+                                {% elif app.match_score >= 60 %}✓ Recommended
+                                {% elif app.match_score >= 45 %}⚠ Maybe
+                                {% else %}✗ Not Recommended
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="app-details">
+                        <div class="app-detail-item">
+                            <strong>Experience:</strong> {{ app.experience_years }} years
+                        </div>
+                        <div class="app-detail-item">
+                            <strong>Education:</strong> {{ app.education_level }}
+                        </div>
+                        <div class="app-detail-item">
+                            <strong>Applied:</strong> {{ app.applied_at[:10] }}
+                        </div>
+                        <div class="app-detail-item">
+                            <strong>Status:</strong>
+                            <span class="badge badge-{{ 'success' if app.status == 'shortlisted' else 'warning' if app.status == 'pending' else 'info' if app.status == 'interview' else 'danger' }}">
+                                {{ app.status.title() }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    {% if app.skills_matched %}
+                    <div class="app-skills">
+                        <strong>✓ Matched Skills:</strong>
+                        <div class="skills-tags">
+                            {% set skills_list = [] %}
+                            {% if app.skills_matched.startswith('[') %}
+                                {% set skills_str = app.skills_matched[1:-1] %}
+                                {% for skill in skills_str.split(',') %}
+                                    {% set clean_skill = skill.strip().strip('"').strip("'") %}
+                                    {% if clean_skill %}
+                                        {% set _ = skills_list.append(clean_skill) %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% for skill in skills_list[:10] %}
+                            <span class="skill-tag">{{ skill }}</span>
+                            {% endfor %}
+                            {% if skills_list|length > 10 %}
+                            <span class="skill-tag">+{{ skills_list|length - 10 }} more</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if app.cover_letter %}
+                    <div class="app-cover-letter">
+                        <strong>📝 Cover Letter:</strong>
+                        <p>{{ app.cover_letter[:200] }}{% if app.cover_letter|length > 200 %}...{% endif %}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="app-actions">
+                        <select class="status-select" onchange="updateStatus({{ app.id }}, this.value)">
+                            <option value="pending" {% if app.status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="shortlisted" {% if app.status == 'shortlisted' %}selected{% endif %}>Shortlisted</option>
+                            <option value="interview" {% if app.status == 'interview' %}selected{% endif %}>Interview</option>
+                            <option value="rejected" {% if app.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                            <option value="hired" {% if app.status == 'hired' %}selected{% endif %}>Hired</option>
+                        </select>
+                        
+                        {% if app.status == 'pending' %}
+                        <button class="btn btn-sm ai-shortlist-btn" onclick="aiShortlist({{ app.id }}, this)">
+                            🤖 AI Shortlist
+                        </button>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('download_resume', app_id=app.id) }}" class="btn btn-sm" download>
+                            📥 Resume
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 3rem; color: #6b7280;">
+                <p style="font-size: 3rem; margin-bottom: 1rem;">📭</p>
+                <h3>No applications yet</h3>
+                <p>Applications will appear here as candidates apply for this position.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <p>&copy; 2024 AI-Powered Recruitment System. All rights reserved.</p>
+    </footer>
+    
+    <script>
+        function updateStatus(appId, status) {
+            fetch(`/applications/${appId}/update_status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: status })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Status updated successfully!', 'success');
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                showAlert('Error updating status', 'error');
+            });
+        }
+        
+        function aiShortlist(appId, button) {
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner"></span> AI Processing...';
+            
+            fetch(`/applications/${appId}/shortlist`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const statusText = data.status === 'shortlisted' ? 'SHORTLISTED ✓' : 'REJECTED ✗';
+                    const alertType = data.status === 'shortlisted' ? 'success' : 'warning';
+                    showAlert(`AI Decision: ${statusText} (Score: ${data.match_score}%)`, alertType);
+                    setTimeout(() => location.reload(), 2000);
+                }
+            })
+            .catch(error => {
+                showAlert('Error processing AI shortlist', 'error');
+                button.disabled = false;
+                button.innerHTML = '🤖 AI Shortlist';
+            });
+        }
+        
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alert.style.position = 'fixed';
+            alert.style.top = '20px';
+            alert.style.right = '20px';
+            alert.style.zIndex = '1000';
+            alert.style.minWidth = '300px';
+            document.body.appendChild(alert);
+            
+            setTimeout(() => alert.remove(), 5000);
+        }
+        
+        function filterApplications(status) {
+            const cards = document.querySelectorAll('.application-card');
+            const buttons = document.querySelectorAll('.filter-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            cards.forEach(card => {
+                if (status === 'all' || card.dataset.status === status) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+    
+    <style>
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border);
+            background: var(--white);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .filter-btn.active {
+            background: var(--primary);
+            color: var(--white);
+            border-color: var(--primary);
+        }
+        
+        .applications-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .application-card {
+            border: 2px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s;
+        }
+        
+        .application-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+        
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .app-header h3 {
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+        
+        .app-contact {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .app-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .app-detail-item {
+            font-size: 0.875rem;
+        }
+        
+        .app-skills {
+            margin-bottom: 1rem;
+        }
+        
+        .skills-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .skill-tag {
+            background: var(--light);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .app-cover-letter {
+            background: var(--light);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .app-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .status-select {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .ai-shortlist-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        
+        .ai-shortlist-btn:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3f91 100%);
+        }
+    </style>
+</body>
+</html>

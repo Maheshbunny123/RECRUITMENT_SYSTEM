@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for {{ job.title }} - Recruitment System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">🎯 Recruitment System</div>
+        <div class="nav-menu">
+            <a href="{{ url_for('dashboard') }}" class="nav-link">Back to Dashboard</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="upload-page">
+            <!-- Job Details Card -->
+            <div class="job-details-card">
+                <h1>{{ job.title }}</h1>
+                
+                <div class="job-meta">
+                    <span class="job-meta-item">
+                        📍 {{ job.location or 'Remote' }}
+                    </span>
+                    <span class="job-meta-item">
+                        💼 {{ job.job_type or 'Full-time' }}
+                    </span>
+                    <span class="job-meta-item">
+                        📊 {{ job.experience_level or 'Mid-level' }}
+                    </span>
+                    {% if job.salary_range %}
+                    <span class="job-meta-item">
+                        💰 {{ job.salary_range }}
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <div class="job-section">
+                    <h3>Job Description</h3>
+                    <p>{{ job.description }}</p>
+                </div>
+                
+                <div class="job-section">
+                    <h3>Requirements</h3>
+                    <p>{{ job.requirements }}</p>
+                </div>
+            </div>
+            
+            <!-- Application Form -->
+            <div class="application-form-card">
+                <h2>Apply for this Position</h2>
+                <p class="form-description">
+                    Submit your application below. Our AI-powered system will automatically screen your resume 
+                    and match it with job requirements.
+                </p>
+                
+                <form method="POST" enctype="multipart/form-data" id="application-form">
+                    <div class="form-group">
+                        <label for="candidate_name">Full Name *</label>
+                        <input type="text" id="candidate_name" name="candidate_name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="candidate_email">Email Address *</label>
+                        <input type="email" id="candidate_email" name="candidate_email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="candidate_phone">Phone Number</label>
+                        <input type="tel" id="candidate_phone" name="candidate_phone">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="resume">Upload Resume * (PDF, DOCX, or TXT - Max 16MB)</label>
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required>
+                            <div class="file-upload-display">
+                                <span class="file-upload-icon">📎</span>
+                                <span class="file-upload-text">Click to upload or drag and drop</span>
+                                <span class="file-name"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cover_letter">Cover Letter (Optional)</label>
+                        <textarea id="cover_letter" name="cover_letter" rows="6" 
+                                  placeholder="Tell us why you're a great fit for this role..."></textarea>
+                    </div>
+                    
+                    <div class="form-info">
+                        ℹ️ Your resume will be automatically screened using AI to match your skills and experience 
+                        with job requirements. You'll receive feedback on your application status.
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-large" id="submit-btn">
+                        Submit Application
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <p>&copy; 2024 AI-Powered Recruitment System. All rights reserved.</p>
+    </footer>
+    
+    <script>
+        // File upload handling
+        const fileInput = document.getElementById('resume');
+        const fileNameDisplay = document.querySelector('.file-name');
+        const fileUploadDisplay = document.querySelector('.file-upload-display');
+        
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const fileName = this.files[0].name;
+                const fileSize = (this.files[0].size / 1024 / 1024).toFixed(2);
+                fileNameDisplay.textContent = `${fileName} (${fileSize} MB)`;
+                fileUploadDisplay.classList.add('file-selected');
+            }
+        });
+        
+        // Form submission handling
+        const form = document.getElementById('application-form');
+        const submitBtn = document.getElementById('submit-btn');
+        
+        form.addEventListener('submit', function() {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Processing Application...';
+        });
+        
+        // Drag and drop handling
+        const fileUploadWrapper = document.querySelector('.file-upload-wrapper');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileUploadWrapper.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileUploadWrapper.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileUploadWrapper.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight(e) {
+            fileUploadWrapper.classList.add('drag-over');
+        }
+        
+        function unhighlight(e) {
+            fileUploadWrapper.classList.remove('drag-over');
+        }
+        
+        fileUploadWrapper.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            
+            // Trigger change event
+            const event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
+        }
+    </script>
+</body>
+</html>
