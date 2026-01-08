@@ -244,6 +244,123 @@ class ResumeScreener:
             'resume_text_length': len(resume_text),
             'extracted_successfully': True
         }
+    
+    def analyze_resume_quality(self, resume_path):
+        """Analyze resume quality and provide scoring"""
+        resume_text = self.extract_text(resume_path)
+        
+        if not resume_text:
+            return {'error': 'Could not extract text', 'total_score': 0}
+        
+        scores = {}
+        
+        # 1. Length Score (15 points)
+        word_count = len(resume_text.split())
+        if word_count >= 400:
+            scores['length'] = 15
+        elif word_count >= 250:
+            scores['length'] = 10
+        elif word_count >= 150:
+            scores['length'] = 5
+        else:
+            scores['length'] = 0
+        
+        # 2. Contact Info Score (10 points)
+        email = self.extract_email(resume_text)
+        phone = self.extract_phone(resume_text)
+        scores['contact'] = (5 if email else 0) + (5 if phone else 0)
+        
+        # 3. Skills Score (25 points)
+        skills, _ = self.extract_skills(resume_text)
+        if len(skills) >= 10:
+            scores['skills'] = 25
+        elif len(skills) >= 6:
+            scores['skills'] = 20
+        elif len(skills) >= 3:
+            scores['skills'] = 15
+        else:
+            scores['skills'] = 5
+        
+        # 4. Experience Score (20 points)
+        exp_years = self.extract_experience(resume_text)
+        if exp_years >= 5:
+            scores['experience'] = 20
+        elif exp_years >= 3:
+            scores['experience'] = 15
+        elif exp_years >= 1:
+            scores['experience'] = 10
+        else:
+            scores['experience'] = 5
+        
+        # 5. Education Score (15 points)
+        _, edu_level = self.extract_education(resume_text)
+        if edu_level >= 4:
+            scores['education'] = 15
+        elif edu_level >= 3:
+            scores['education'] = 12
+        elif edu_level >= 2:
+            scores['education'] = 8
+        else:
+            scores['education'] = 3
+        
+        # 6. Structure Score (15 points)
+        structure_score = 0
+        keywords = ['experience', 'education', 'skills', 'summary', 'objective', 'project']
+        for keyword in keywords:
+            if keyword in resume_text.lower():
+                structure_score += 2.5
+        scores['structure'] = min(structure_score, 15)
+        
+        total = sum(scores.values())
+        
+        # Grade
+        if total >= 85:
+            grade = 'A+'
+            feedback = 'Excellent resume! Very well structured and comprehensive.'
+        elif total >= 75:
+            grade = 'A'
+            feedback = 'Great resume! Strong content with minor improvements possible.'
+        elif total >= 65:
+            grade = 'B'
+            feedback = 'Good resume! Consider adding more relevant skills or experience.'
+        elif total >= 50:
+            grade = 'C'
+            feedback = 'Average resume. Needs significant improvements in multiple areas.'
+        else:
+            grade = 'D'
+            feedback = 'Weak resume. Major improvements needed in content and structure.'
+        
+        return {
+            'total_score': round(total, 2),
+            'grade': grade,
+            'scores': scores,
+            'feedback': feedback,
+            'word_count': word_count,
+            'skills_found': len(skills),
+            'experience_years': exp_years,
+            'has_email': bool(email),
+            'has_phone': bool(phone),
+            'improvements': self._get_improvements(scores)
+        }
+    
+    def _get_improvements(self, scores):
+        """Get improvement suggestions"""
+        improvements = []
+        
+        if scores['length'] < 10:
+            improvements.append('Increase content: Add more details about your experience and achievements (aim for 250-400 words).')
+        if scores['contact'] < 10:
+            improvements.append('Add complete contact information: Include both email and phone number.')
+        if scores['skills'] < 20:
+            improvements.append('List more skills: Add technical and soft skills relevant to your field (aim for 8-12 skills).')
+        if scores['experience'] < 15:
+            improvements.append('Highlight experience: Provide more details about your work history and years of experience.')
+        if scores['education'] < 12:
+            improvements.append('Include education: Add your degree, institution, and graduation year.')
+        if scores['structure'] < 12:
+            improvements.append('Improve structure: Use clear sections like Summary, Experience, Education, Skills, Projects.')
+        
+        return improvements
 
 # Testing function
 if __name__ == "__main__":

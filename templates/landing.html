@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Recruitment Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="landing-body">
+    <nav class="landing-nav">
+        <div class="nav-container">
+            <div class="nav-brand-landing">
+                <span class="brand-icon">🎯</span>
+                <span class="brand-text">TalentMatch AI</span>
+            </div>
+            <div class="nav-links-landing">
+                <a href="{{ url_for('login') }}" class="nav-link-landing">Login</a>
+                <a href="{{ url_for('register') }}" class="btn-landing btn-primary-landing">Get Started</a>
+            </div>
+        </div>
+    </nav>
+    
+    <section class="hero-section">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">Find The Perfect Match With AI</h1>
+                <p class="hero-subtitle">
+                    Revolutionary recruitment platform powered by artificial intelligence. 
+                    Match candidates with jobs in seconds, not weeks.
+                </p>
+                <div class="hero-buttons">
+                    <a href="{{ url_for('register') }}?role=jobseeker" class="btn-hero btn-primary-hero">
+                        I'm Looking for a Job
+                    </a>
+                    <a href="{{ url_for('register') }}?role=recruiter" class="btn-hero btn-secondary-hero">
+                        I'm Hiring Talent
+                    </a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item-hero">
+                        <div class="stat-number">95%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="stat-item-hero">
+                        <div class="stat-number">< 5s</div>
+                        <div class="stat-label">Processing Time</div>
+                    </div>
+                    <div class="stat-item-hero">
+                        <div class="stat-number">80%</div>
+                        <div class="stat-label">Time Saved</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="features-section">
+        <div class="features-container">
+            <h2 class="section-title">Powerful Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Resume Screening</h3>
+                    <p>Advanced machine learning algorithms analyze resumes and match them with job requirements automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Resume Quality Scorer</h3>
+                    <p>Get instant feedback on your resume quality with our comprehensive scoring system and improvement suggestions.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Job-Resume Matcher</h3>
+                    <p>Compare your resume against any job description and see exactly how well you match before applying.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Instant Shortlisting</h3>
+                    <p>AI-powered one-click shortlisting saves recruiters hours of manual screening time.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3>Analytics Dashboard</h3>
+                    <p>Track application metrics, candidate quality, and hiring pipeline with real-time analytics.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Secure & Private</h3>
+                    <p>Enterprise-grade security ensures your data remains private and protected at all times.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="how-it-works">
+        <div class="hiw-container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="hiw-grid">
+                <div class="hiw-column">
+                    <h3 class="hiw-title">For Job Seekers</h3>
+                    <div class="hiw-steps">
+                        <div class="hiw-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Create Account</h4>
+                                <p>Sign up as a job seeker in under 60 seconds</p>
+                            </div>
+                        </div>
+                        <div class="hiw-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Browse & Apply</h4>
+                                <p>Find jobs and apply with one click</p>
+                            </div>
+                        </div>
+                        <div class="hiw-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Get Matched</h4>
+                                <p>AI scores your profile and matches you with opportunities</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hiw-column">
+                    <h3 class="hiw-title">For Recruiters</h3>
+                    <div class="hiw-steps">
+                        <div class="hiw-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Post Jobs</h4>
+                                <p>Create detailed job listings in minutes</p>
+                            </div>
+                        </div>
+                        <div class="hiw-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>AI Screening</h4>
+                                <p>Automatic resume analysis and scoring</p>
+                            </div>
+                        </div>
+                        <div class="hiw-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Hire Faster</h4>
+                                <p>Review top candidates and make offers quickly</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="cta-section">
+        <div class="cta-container">
+            <h2 class="cta-title">Ready to Transform Your Hiring?</h2>
+            <p class="cta-subtitle">Join thousands of companies and job seekers using AI-powered recruitment</p>
+            <a href="{{ url_for('register') }}" class="btn-cta">Start Free Today</a>
+        </div>
+    </section>
+    
+    <footer class="landing-footer">
+        <p>&copy; 2024 TalentMatch AI. All rights reserved.</p>
+    </footer>
+</body>
+</html>
