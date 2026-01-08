@@ -4,17 +4,26 @@ from werkzeug.utils import secure_filename
 import sqlite3
 import os
 from datetime import datetime
-from ml.resume_screening import ResumeScreener
 import json
 
+# ---- ML Resume Screener ----
+try:
+    from ml.resume_screening import ResumeScreener
+    screener = ResumeScreener()
+except ImportError:
+    screener = None
+    print("Warning: ResumeScreener not found. Resume analysis disabled.")
+
+# ---- Flask Setup ----
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production-2024'
 app.config['UPLOAD_FOLDER'] = 'resumes'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'docx', 'txt'}
 
-screener = ResumeScreener()
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# ---- Helpers ----
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
@@ -27,6 +36,7 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
     
+    # Users
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,6 +50,7 @@ def init_db():
         )
     ''')
     
+    # Jobs
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS jobs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +67,8 @@ def init_db():
             FOREIGN KEY (posted_by) REFERENCES users (id)
         )
     ''')
-    
+
+    # Applications
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS applications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,6 +88,7 @@ def init_db():
         )
     ''')
     
+    # Insert demo users safely
     try:
         cursor.execute(
             "INSERT INTO users (username, email, password, role, full_name) VALUES (?, ?, ?, ?, ?)",
@@ -87,15 +100,17 @@ def init_db():
         )
     except sqlite3.IntegrityError:
         pass
-    
+
     conn.commit()
     conn.close()
+
+# ---- Routes ----
 
 @app.route('/')
 def index():
     return render_template('landing.html')
 
-# ==================== AUTHENTICATION ====================
+# ------------------- AUTH -------------------
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -109,16 +124,14 @@ def login():
         conn.close()
         
         if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['role'] = user['role']
-            session['full_name'] = user['full_name']
+            session.update({
+                'user_id': user['id'],
+                'username': user['username'],
+                'role': user['role'],
+                'full_name': user['full_name']
+            })
             flash('Login successful!', 'success')
-            
-            if role == 'recruiter':
-                return redirect(url_for('recruiter_dashboard'))
-            else:
-                return redirect(url_for('jobseeker_dashboard'))
+            return redirect(url_for('recruiter_dashboard') if role=='recruiter' else url_for('jobseeker_dashboard'))
         else:
             flash('Invalid credentials or role', 'error')
     
@@ -136,10 +149,10 @@ def register():
         
         conn = get_db()
         try:
-            conn.execute(
-                'INSERT INTO users (username, email, password, role, full_name, phone) VALUES (?, ?, ?, ?, ?, ?)',
-                (username, email, generate_password_hash(password), role, full_name, phone)
-            )
+            conn.execute('''
+                INSERT INTO users (username, email, password, role, full_name, phone)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (username, email, generate_password_hash(password), role, full_name, phone))
             conn.commit()
             flash('Registration successful! Please login.', 'success')
             return redirect(url_for('login'))
@@ -156,278 +169,101 @@ def logout():
     flash('Logged out successfully', 'success')
     return redirect(url_for('index'))
 
-# ==================== RECRUITER ROUTES ====================
+# ------------------- RECRUITER -------------------
+
+def recruiter_required(func):
+    def wrapper(*args, **kwargs):
+        if session.get('role') != 'recruiter':
+            flash('Access denied. Recruiters only.', 'error')
+            return redirect(url_for('login'))
+        return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__
+    return wrapper
 
 @app.route('/recruiter/dashboard')
+@recruiter_required
 def recruiter_dashboard():
-    if 'user_id' not in session or session.get('role') != 'recruiter':
-        flash('Access denied. Recruiters only.', 'error')
-        return redirect(url_for('login'))
-    
     conn = get_db()
     
-    my_jobs = conn.execute('SELECT COUNT(*) as count FROM jobs WHERE posted_by = ?', (session['user_id'],)).fetchone()['count']
+    my_jobs = conn.execute('SELECT COUNT(*) FROM jobs WHERE posted_by=?', (session['user_id'],)).fetchone()[0]
     total_applications = conn.execute('''
-        SELECT COUNT(*) as count FROM applications a
-        JOIN jobs j ON a.job_id = j.id WHERE j.posted_by = ?
-    ''', (session['user_id'],)).fetchone()['count']
+        SELECT COUNT(*) FROM applications a JOIN jobs j ON a.job_id=j.id WHERE j.posted_by=?
+    ''', (session['user_id'],)).fetchone()[0]
+    
     pending = conn.execute('''
-        SELECT COUNT(*) as count FROM applications a
-        JOIN jobs j ON a.job_id = j.id WHERE j.posted_by = ? AND a.status = "pending"
-    ''', (session['user_id'],)).fetchone()['count']
+        SELECT COUNT(*) FROM applications a JOIN jobs j ON a.job_id=j.id
+        WHERE j.posted_by=? AND a.status="pending"
+    ''', (session['user_id'],)).fetchone()[0]
+    
     shortlisted = conn.execute('''
-        SELECT COUNT(*) as count FROM applications a
-        JOIN jobs j ON a.job_id = j.id WHERE j.posted_by = ? AND a.status = "shortlisted"
-    ''', (session['user_id'],)).fetchone()['count']
+        SELECT COUNT(*) FROM applications a JOIN jobs j ON a.job_id=j.id
+        WHERE j.posted_by=? AND a.status="shortlisted"
+    ''', (session['user_id'],)).fetchone()[0]
     
     jobs = conn.execute('''
-        SELECT j.*, (SELECT COUNT(*) FROM applications WHERE job_id = j.id) as application_count
-        FROM jobs j WHERE j.posted_by = ? ORDER BY j.created_at DESC
+        SELECT j.*, (SELECT COUNT(*) FROM applications WHERE job_id=j.id) as application_count
+        FROM jobs j WHERE posted_by=? ORDER BY created_at DESC
     ''', (session['user_id'],)).fetchall()
     
     recent_apps = conn.execute('''
-        SELECT a.*, j.title as job_title, u.full_name as candidate_name, u.email as candidate_email
+        SELECT a.*, j.title AS job_title, u.full_name AS candidate_name, u.email AS candidate_email
         FROM applications a
-        JOIN jobs j ON a.job_id = j.id
-        JOIN users u ON a.user_id = u.id
-        WHERE j.posted_by = ?
+        JOIN jobs j ON a.job_id=j.id
+        JOIN users u ON a.user_id=u.id
+        WHERE j.posted_by=?
         ORDER BY a.applied_at DESC LIMIT 5
     ''', (session['user_id'],)).fetchall()
     
     conn.close()
     
-    stats = {'total_jobs': my_jobs, 'total_applications': total_applications, 
-             'pending_applications': pending, 'shortlisted': shortlisted}
+    stats = {
+        'total_jobs': my_jobs,
+        'total_applications': total_applications,
+        'pending_applications': pending,
+        'shortlisted': shortlisted
+    }
     
     return render_template('recruiter_dashboard.html', stats=stats, jobs=jobs, applications=recent_apps)
 
-@app.route('/recruiter/jobs/create', methods=['GET', 'POST'])
-def create_job():
-    if 'user_id' not in session or session.get('role') != 'recruiter':
-        return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        conn = get_db()
-        conn.execute('''
-            INSERT INTO jobs (title, description, requirements, location, job_type, 
-                            experience_level, salary_range, posted_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (request.form.get('title'), request.form.get('description'), 
-              request.form.get('requirements'), request.form.get('location'),
-              request.form.get('job_type'), request.form.get('experience_level'),
-              request.form.get('salary_range'), session['user_id']))
-        conn.commit()
-        conn.close()
-        flash('Job posted successfully!', 'success')
-        return redirect(url_for('recruiter_dashboard'))
-    
-    return render_template('create_job.html')
+# ------------------- JOB SEEKER -------------------
 
-@app.route('/recruiter/jobs/<int:job_id>/applications')
-def view_applications(job_id):
-    if 'user_id' not in session or session.get('role') != 'recruiter':
-        return redirect(url_for('login'))
-    
-    conn = get_db()
-    job = conn.execute('SELECT * FROM jobs WHERE id = ? AND posted_by = ?', 
-                       (job_id, session['user_id'])).fetchone()
-    
-    if not job:
-        flash('Job not found', 'error')
-        conn.close()
-        return redirect(url_for('recruiter_dashboard'))
-    
-    applications = conn.execute('''
-        SELECT a.*, u.full_name as candidate_name, u.email as candidate_email, u.phone as candidate_phone
-        FROM applications a
-        JOIN users u ON a.user_id = u.id
-        WHERE a.job_id = ?
-        ORDER BY a.match_score DESC, a.applied_at DESC
-    ''', (job_id,)).fetchall()
-    conn.close()
-    
-    return render_template('recruiter_applications.html', job=job, applications=applications)
-
-@app.route('/recruiter/applications/<int:app_id>/update', methods=['POST'])
-def update_status(app_id):
-    if 'user_id' not in session or session.get('role') != 'recruiter':
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    conn = get_db()
-    app = conn.execute('''
-        SELECT a.*, j.posted_by FROM applications a
-        JOIN jobs j ON a.job_id = j.id WHERE a.id = ?
-    ''', (app_id,)).fetchone()
-    
-    if not app or app['posted_by'] != session['user_id']:
-        conn.close()
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    conn.execute('UPDATE applications SET status = ? WHERE id = ?', 
-                 (request.json.get('status'), app_id))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
-
-@app.route('/recruiter/applications/<int:app_id>/ai-shortlist', methods=['POST'])
-def ai_shortlist(app_id):
-    if 'user_id' not in session or session.get('role') != 'recruiter':
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    conn = get_db()
-    app = conn.execute('''
-        SELECT a.*, j.posted_by, j.requirements, j.title FROM applications a
-        JOIN jobs j ON a.job_id = j.id WHERE a.id = ?
-    ''', (app_id,)).fetchone()
-    
-    if not app or app['posted_by'] != session['user_id']:
-        conn.close()
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    result = screener.screen_resume(app['resume_path'], app['requirements'], app['title'])
-    status = 'shortlisted' if result['match_score'] >= 60 else 'rejected'
-    
-    conn.execute('UPDATE applications SET status = ?, screening_result = ? WHERE id = ?',
-                 (status, json.dumps(result), app_id))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'success': True, 'status': status, 'match_score': result['match_score']})
-
-# ==================== JOB SEEKER ROUTES ====================
+def jobseeker_required(func):
+    def wrapper(*args, **kwargs):
+        if session.get('role') != 'jobseeker':
+            flash('Access denied. Job seekers only.', 'error')
+            return redirect(url_for('login'))
+        return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__
+    return wrapper
 
 @app.route('/jobseeker/dashboard')
+@jobseeker_required
 def jobseeker_dashboard():
-    if 'user_id' not in session or session.get('role') != 'jobseeker':
-        flash('Access denied. Job seekers only.', 'error')
-        return redirect(url_for('login'))
-    
     conn = get_db()
     
-    my_apps = conn.execute('SELECT COUNT(*) as count FROM applications WHERE user_id = ?', 
-                          (session['user_id'],)).fetchone()['count']
-    pending = conn.execute('SELECT COUNT(*) as count FROM applications WHERE user_id = ? AND status = "pending"',
-                          (session['user_id'],)).fetchone()['count']
-    shortlisted = conn.execute('SELECT COUNT(*) as count FROM applications WHERE user_id = ? AND status = "shortlisted"',
-                              (session['user_id'],)).fetchone()['count']
+    total_apps = conn.execute('SELECT COUNT(*) FROM applications WHERE user_id=?', (session['user_id'],)).fetchone()[0]
+    pending = conn.execute('SELECT COUNT(*) FROM applications WHERE user_id=? AND status="pending"', (session['user_id'],)).fetchone()[0]
+    shortlisted = conn.execute('SELECT COUNT(*) FROM applications WHERE user_id=? AND status="shortlisted"', (session['user_id'],)).fetchone()[0]
     
-    jobs = conn.execute('SELECT * FROM jobs WHERE status = "active" ORDER BY created_at DESC').fetchall()
+    jobs = conn.execute('SELECT * FROM jobs WHERE status="active" ORDER BY created_at DESC').fetchall()
     
-    my_applications = conn.execute('''
-        SELECT a.*, j.title as job_title, j.location, j.job_type
+    my_apps = conn.execute('''
+        SELECT a.*, j.title AS job_title, j.location, j.job_type
         FROM applications a
-        JOIN jobs j ON a.job_id = j.id
-        WHERE a.user_id = ?
-        ORDER BY a.applied_at DESC
+        JOIN jobs j ON a.job_id=j.id
+        WHERE a.user_id=? ORDER BY a.applied_at DESC
     ''', (session['user_id'],)).fetchall()
     
     conn.close()
     
-    stats = {'total_applications': my_apps, 'pending': pending, 'shortlisted': shortlisted}
-    return render_template('jobseeker_dashboard.html', stats=stats, jobs=jobs, applications=my_applications)
+    stats = {'total_applications': total_apps, 'pending': pending, 'shortlisted': shortlisted}
+    
+    return render_template('jobseeker_dashboard.html', stats=stats, jobs=jobs, applications=my_apps)
 
-@app.route('/jobseeker/jobs/<int:job_id>/apply', methods=['GET', 'POST'])
-def apply_job(job_id):
-    if 'user_id' not in session or session.get('role') != 'jobseeker':
-        return redirect(url_for('login'))
-    
-    conn = get_db()
-    job = conn.execute('SELECT * FROM jobs WHERE id = ?', (job_id,)).fetchone()
-    
-    # Check if already applied
-    existing = conn.execute('SELECT * FROM applications WHERE job_id = ? AND user_id = ?',
-                           (job_id, session['user_id'])).fetchone()
-    
-    if existing:
-        flash('You have already applied for this job', 'warning')
-        conn.close()
-        return redirect(url_for('jobseeker_dashboard'))
-    
-    if request.method == 'POST':
-        file = request.files['resume']
-        if file and allowed_file(file.filename):
-            filename = secure_filename(f"{session['username']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            result = screener.screen_resume(filepath, job['requirements'], job['title'])
-            
-            conn.execute('''
-                INSERT INTO applications (job_id, user_id, resume_path, cover_letter,
-                                        match_score, skills_matched, experience_years,
-                                        education_level, screening_result)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (job_id, session['user_id'], filepath, request.form.get('cover_letter'),
-                  result['match_score'], json.dumps(result['skills_matched']),
-                  result.get('experience_years', 0), result.get('education_level', 'Unknown'),
-                  json.dumps(result)))
-            conn.commit()
-            conn.close()
-            flash(f'Application submitted! Your match score: {result["match_score"]}%', 'success')
-            return redirect(url_for('jobseeker_dashboard'))
-    
-    conn.close()
-    return render_template('apply_job.html', job=job)
-
-@app.route('/jobseeker/resume-scorer', methods=['GET', 'POST'])
-def resume_scorer():
-    if 'user_id' not in session or session.get('role') != 'jobseeker':
-        return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        file = request.files.get('resume')
-        if file and allowed_file(file.filename):
-            filename = secure_filename(f"temp_{session['username']}_{file.filename}")
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            result = screener.analyze_resume_quality(filepath)
-            os.remove(filepath)  # Remove temp file
-            
-            return render_template('resume_scorer.html', result=result)
-    
-    return render_template('resume_scorer.html')
-
-@app.route('/jobseeker/job-matcher', methods=['GET', 'POST'])
-def job_matcher():
-    if 'user_id' not in session or session.get('role') != 'jobseeker':
-        return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        file = request.files.get('resume')
-        job_desc = request.form.get('job_description')
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(f"temp_{session['username']}_{file.filename}")
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            result = screener.screen_resume(filepath, job_desc, "Job Position")
-            os.remove(filepath)
-            
-            return render_template('job_matcher.html', result=result, job_desc=job_desc)
-    
-    return render_template('job_matcher.html')
-
-@app.route('/download-resume/<int:app_id>')
-def download_resume(app_id):
-    if 'user_id' not in session or session.get('role') != 'recruiter':
-        return redirect(url_for('login'))
-    
-    conn = get_db()
-    app = conn.execute('''
-        SELECT a.resume_path, j.posted_by FROM applications a
-        JOIN jobs j ON a.job_id = j.id WHERE a.id = ?
-    ''', (app_id,)).fetchone()
-    conn.close()
-    
-    if not app or app['posted_by'] != session['user_id']:
-        flash('Unauthorized', 'error')
-        return redirect(url_for('recruiter_dashboard'))
-    
-    return send_file(app['resume_path'], as_attachment=True)
-
+# ---- INIT & RUN ----
 if __name__ == '__main__':
-    os.makedirs('resumes', exist_ok=True)
+    import os
     init_db()
-    app.run()
+    port = int(os.environ.get('PORT', 5000))  # Render will provide PORT
+    app.run(host='0.0.0.0', port=port)
+
