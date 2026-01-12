@@ -30,6 +30,18 @@
 
         <div class="section">
             <h2>Applications (Sorted by Match Score)</h2>
+            <div style="margin-top: 1rem; margin-bottom: 1.5rem; display: flex; gap: 1rem;">
+    <button onclick="bulkAIShortlist()" 
+            class="btn"
+            style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+        🤖 AI Shortlist ALL Pending Applications
+    </button>
+
+    <span style="font-size: 0.875rem; color: var(--gray-600); align-self: center;">
+        This will automatically shortlist or reject all pending candidates using AI
+    </span>
+</div>
+
 
             {% if applications|length > 0 %}
                 <div style="display: grid; gap: 1.5rem; margin-top: 1.5rem;">
@@ -133,6 +145,14 @@
                             <a href="{{ url_for('download_resume', app_id=app.id) }}" class="btn btn-sm">
                                 📥 Download Resume
                             </a>
+                            {% if app.screening_result %}
+<a href="/recruiter/applications/{{ app.id }}/download-report"
+   class="btn btn-sm"
+   style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white;">
+   📄 Download AI Report
+</a>
+{% endif %}
+
                         </div>
                     </div>
                     {% endfor %}
@@ -202,7 +222,33 @@
             alert.style.minWidth = '300px';
             document.body.appendChild(alert);
             setTimeout(() => alert.remove(), 5000);
+
+
         }
+    function bulkAIShortlist() {
+    if (!confirm("Are you sure you want to run AI on ALL pending applications?")) {
+        return;
+    }
+
+    fetch("/recruiter/jobs/{{ job.id }}/ai-shortlist-all", {
+        method: "POST"
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(
+                "AI processed " + data.processed + " applications successfully!",
+                "success"
+            );
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showAlert("AI bulk processing failed", "error");
+        }
+    })
+    .catch(() => showAlert("Server error during AI processing", "error"));
+}
+
+
     </script>
 </body>
 </html>

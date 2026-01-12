@@ -6,6 +6,9 @@ import os
 from datetime import datetime
 from ml.resume_screening import ResumeScreener
 import json
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production-2024'
@@ -293,6 +296,77 @@ def ai_shortlist(app_id):
     conn.close()
     
     return jsonify({'success': True, 'status': status, 'match_score': result['match_score']})
+
+@app.route('/recruiter/jobs/<int:job_id>/ai-shortlist-all', methods=['POST'])
+def ai_shortlist_all(job_id):
+    if 'user_id' not in session or session.get('role') != 'recruiter':
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = get_db()
+
+    job = conn.execute(
+        'SELECT * FROM jobs WHERE id = ? AND posted_by = ?',
+        (job_id, session['user_id'])
+    ).fetchone()
+
+    if not job:
+        conn.close()
+        return jsonify({'error': 'Job not found'}), 404
+
+    applications = conn.execute(
+        'SELECT * FROM applications WHERE job_id = ? AND status = "pending"',
+        (job_id,)
+    ).fetchall()
+
+    updated = 0
+    for app in applications:
+        result = screener.screen_resume(
+            app['resume_path'],
+            job['requirements'],
+            job['title']
+        )
+        status = 'shortlisted' if result['match_score'] >= 60 else 'rejected'
+
+        conn.execute(
+            'UPDATE applications SET status = ?, screening_result = ? WHERE id = ?',
+            (status, json.dumps(result), app['id'])
+        )
+        updated += 1
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'processed': updated})
+
+@app.route('/recruiter/applications/<int:app_id>/download-report')
+def download_ai_report(app_id):
+    if 'user_id' not in session or session.get('role') != 'recruiter':
+        return redirect(url_for('login'))
+
+    conn = get_db()
+    app = conn.execute(
+        'SELECT a.screening_result, j.posted_by FROM applications a JOIN jobs j ON a.job_id=j.id WHERE a.id=?',
+        (app_id,)
+    ).fetchone()
+    conn.close()
+
+    if not app or app['posted_by'] != session['user_id']:
+        return redirect(url_for('recruiter_dashboard'))
+
+    result = json.loads(app['screening_result'])
+
+    file_path = f"ai_report_{app_id}.pdf"
+    c = canvas.Canvas(file_path, pagesize=letter)
+    c.drawString(50, 750, f"Match Score: {result['match_score']}%")
+    c.drawString(50, 720, f"Recommendation: {result['recommendation']}")
+    c.drawString(50, 690, f"Experience: {result['experience_years']} years")
+    c.drawString(50, 660, f"Education: {result['education_level']}")
+    c.drawString(50, 630, f"Skills Matched: {', '.join(result['skills_matched'])}")
+    c.save()
+
+    return send_file(file_path, as_attachment=True)
+
+
 
 # ==================== JOB SEEKER ROUTES ====================
 
