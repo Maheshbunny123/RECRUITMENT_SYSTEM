@@ -11,8 +11,6 @@
         <div class="nav-brand">🎯 TalentMatch AI</div>
         <div class="nav-menu">
             <a href="{{ url_for('jobseeker_dashboard') }}" class="nav-link active">Dashboard</a>
-
-            <a href="{{ url_for('job_matcher') }}" class="nav-link">Job Matcher</a>
             <div class="nav-user">
                 <span>👤 {{ session.full_name or session.username }}</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-sm">Logout</a>
