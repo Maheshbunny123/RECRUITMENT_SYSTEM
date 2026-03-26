@@ -447,20 +447,39 @@ def apply_job(job_id):
 def resume_scorer():
     if 'user_id' not in session or session.get('role') != 'jobseeker':
         return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        file = request.files.get('resume')
-        if file and allowed_file(file.filename):
+
+    try:
+        if request.method == 'POST':
+            file = request.files.get('resume')
+
+            if not file:
+                return "No file uploaded"
+
+            # ensure folder exists (IMPORTANT FOR RENDER)
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
             filename = secure_filename(f"temp_{session['username']}_{file.filename}")
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
             file.save(filepath)
-            
-            result = screener.analyze_resume_quality(filepath)
-            os.remove(filepath)  # Remove temp file
-            
+
+            print("File saved:", filepath)  # debug log
+
+            # 🔥 safe ML call
+            try:
+                result = screener.analyze_resume_quality(filepath)
+            except Exception as e:
+                print("ML ERROR:", e)
+                result = {"error": "Resume analysis failed"}
+
+            os.remove(filepath)
+
             return render_template('resume_scorer.html', result=result)
-    
-    return render_template('resume_scorer.html')
+
+        return render_template('resume_scorer.html')
+
+    except Exception as e:
+        return f"Error occurred: {str(e)}"
 
 @app.route('/jobseeker/job-matcher', methods=['GET', 'POST'])
 def job_matcher():
