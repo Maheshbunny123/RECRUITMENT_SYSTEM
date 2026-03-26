@@ -443,69 +443,7 @@ def apply_job(job_id):
     conn.close()
     return render_template('apply_job.html', job=job)
 
-@app.route('/jobseeker/resume-scorer', methods=['GET', 'POST'])
-def resume_scorer():
-    if 'user_id' not in session or session.get('role') != 'jobseeker':
-        return redirect(url_for('login'))
 
-    try:
-        if request.method == 'POST':
-            file = request.files.get('resume')
-
-            if not file:
-                return render_template('resume_scorer.html', result=None)
-
-            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-            filename = secure_filename(f"temp_{session['username']}_{file.filename}")
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-            file.save(filepath)
-
-            # 🔥 SAFE RESULT (NO ERROR STRUCTURE)
-            try:
-                result = screener.analyze_resume_quality(filepath)
-
-                # ✅ ensure ALL keys exist
-                result = {
-                    'total_score': result.get('total_score', 0),
-                    'grade': result.get('grade', 'N/A'),
-                    'feedback': result.get('feedback', 'No feedback'),
-                    'scores': result.get('scores', {}),
-                    'improvements': result.get('improvements', []),
-                    'word_count': result.get('word_count', 0),
-                    'skills_found': result.get('skills_found', 0),
-                    'experience_years': result.get('experience_years', 0),
-                    'has_email': result.get('has_email', False),
-                    'has_phone': result.get('has_phone', False)
-                }
-
-            except Exception as e:
-                print("ML ERROR:", e)
-
-                # ✅ ALWAYS RETURN SAFE STRUCTURE
-                result = {
-                    'total_score': 0,
-                    'grade': 'Error',
-                    'feedback': 'Resume analysis failed',
-                    'scores': {},
-                    'improvements': [],
-                    'word_count': 0,
-                    'skills_found': 0,
-                    'experience_years': 0,
-                    'has_email': False,
-                    'has_phone': False
-                }
-
-            os.remove(filepath)
-
-            return render_template('resume_scorer.html', result=result)
-
-        return render_template('resume_scorer.html', result=None)
-
-    except Exception as e:
-        print("ROUTE ERROR:", e)
-        return "Something went wrong"
 
 @app.route('/jobseeker/job-matcher', methods=['GET', 'POST'])
 def job_matcher():
