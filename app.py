@@ -447,26 +447,6 @@ def apply_job(job_id):
 
 @app.route('/jobseeker/job-matcher', methods=['GET', 'POST'])
 def job_matcher():
-    if 'user_id' not in session or session.get('role') != 'jobseeker':
-        return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        file = request.files.get('resume')
-        job_desc = request.form.get('job_description')
-
-        if not file:
-            return render_template('job_matcher.html', result=None)
-
-        # 🔥 NO ML — STATIC RESULT (WILL NEVER CRASH)
-        result = {
-            'match_score': 75,
-            'skills_matched': ['Python', 'SQL', 'Communication'],
-            'experience_years': 2,
-            'education_level': 'Bachelor'
-        }
-
-        return render_template('job_matcher.html', result=result, job_desc=job_desc)
-
     return render_template('job_matcher.html', result=None)
 @app.route('/download-resume/<int:app_id>')
 def download_resume(app_id):
