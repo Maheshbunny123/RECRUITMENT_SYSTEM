@@ -40,7 +40,7 @@ def init_db():
             full_name TEXT,
             phone TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+        ) 
     ''')
     
     cursor.execute('''
