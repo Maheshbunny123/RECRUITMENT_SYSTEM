@@ -449,22 +449,52 @@ def apply_job(job_id):
 def job_matcher():
     if 'user_id' not in session or session.get('role') != 'jobseeker':
         return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        file = request.files.get('resume')
-        job_desc = request.form.get('job_description')
-        
-        if file and allowed_file(file.filename):
+
+    try:
+        if request.method == 'POST':
+            file = request.files.get('resume')
+            job_desc = request.form.get('job_description')
+
+            if not file:
+                return render_template('job_matcher.html', result=None)
+
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
             filename = secure_filename(f"temp_{session['username']}_{file.filename}")
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
-            
-            result = screener.screen_resume(filepath, job_desc, "Job Position")
+
+            try:
+                result = screener.screen_resume(filepath, job_desc, "Job Position")
+
+                # ✅ safe structure
+                result = {
+                    'match_score': result.get('match_score', 0),
+                    'skills_matched': result.get('skills_matched', []),
+                    'experience_years': result.get('experience_years', 0),
+                    'education_level': result.get('education_level', 'N/A')
+                }
+
+            except Exception as e:
+                print("JOB MATCHER ERROR:", e)
+
+                # ✅ fallback (NO CRASH)
+                result = {
+                    'match_score': 0,
+                    'skills_matched': [],
+                    'experience_years': 0,
+                    'education_level': 'Error'
+                }
+
             os.remove(filepath)
-            
+
             return render_template('job_matcher.html', result=result, job_desc=job_desc)
-    
-    return render_template('job_matcher.html')
+
+        return render_template('job_matcher.html', result=None)
+
+    except Exception as e:
+        print("ROUTE ERROR:", e)
+        return "Something went wrong"
 
 @app.route('/download-resume/<int:app_id>')
 def download_resume(app_id):
