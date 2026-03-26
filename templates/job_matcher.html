@@ -57,7 +57,7 @@
                 </form>
             </div>
 
-            {% if result %}
+            {% if result and result.get('match_score') %}
             <div class="section">
                 <h2>Match Analysis</h2>
                 
