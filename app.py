@@ -444,10 +444,6 @@ def apply_job(job_id):
     return render_template('apply_job.html', job=job)
 
 
-
-@app.route('/jobseeker/job-matcher', methods=['GET', 'POST'])
-def job_matcher():
-    return render_template('job_matcher.html', result=None)
 @app.route('/download-resume/<int:app_id>')
 def download_resume(app_id):
     if 'user_id' not in session or session.get('role') != 'recruiter':
